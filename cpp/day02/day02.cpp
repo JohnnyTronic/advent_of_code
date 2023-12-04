@@ -18,6 +18,10 @@ int main()
     std::getline(ifs, line);
     int sum;
     while (ifs.good()) {
+        int colonPos = line.find(':');
+        std::cout << "colonPos: " << colonPos << std::endl;
+
+
         std::stringstream lineStream(line);
         std::string gameLabel;
         std::getline(lineStream, gameLabel, ':');
