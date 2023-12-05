@@ -29,6 +29,19 @@ public:
                 return false;
         }
     }
+
+    int calculateMinimumPower() {
+        int minRed = 0;
+        int minGreen = 0;
+        int minBlue = 0;
+        for (auto sample : samples) {
+            minRed = std::max(minRed, sample.red);
+            minGreen = std::max(minGreen, sample.green);
+            minBlue = std::max(minBlue, sample.blue);
+        }
+
+        return minRed * minGreen * minBlue;
+    }
 };
 
 
@@ -93,36 +106,7 @@ int main()
             line.erase(0, semicolonPos + 2);
         }
 
-
-        games.push_back(newGame);
-        
-
-        //std::stringstream lineStream(line);
-        //std::string gameLabel;
-        //std::getline(lineStream, gameLabel, ':');
-
-        //std::string gameId;
-        //std::stringstream gameLabelStream(gameLabel);
-        //std::getline(gameLabelStream, gameId, ' '); // "Game"
-        //std::getline(gameLabelStream, gameId, ' '); // "##"
-        //        
-        //std::string allGameResults;
-        //std::getline(lineStream, allGameResults, ':');
-
-        //std::stringstream allGameResultsStream(allGameResults);
-        //std::string gameResult;
-        //std::getline(allGameResultsStream, gameResult, ';');
-        //while (allGameResultsStream.good()) {
-        //    std::stringstream gameResultStream(gameResult);
-        //    std::cout << "gameResult: " << gameResult << std::endl;
-
-        //    std::getline(allGameResultsStream, gameResult, ';');
-        //}
-
-        //
-
-        //// Read next line
-        //std::getline(ifs, line);
+        games.push_back(newGame);       
     }
 
     int score = 0;
@@ -132,7 +116,17 @@ int main()
             score += game.id;
     }
 
-    std::cout << "Final score: " << score << "\n";
+    std::cout << "Part 1 final score: " << score << "\n";
+
+    // Part 2
+    int sumPower = 0;
+    for (auto game : games) {
+        int minPower = game.calculateMinimumPower();
+        std::cout << "GameId: " << game.id << ", minPower: " << minPower << "\n";
+        sumPower += minPower;
+    }
+
+    std::cout << "Part 2 sum of minimum powers: " << sumPower << "\n";
     
     return 0;
 }
