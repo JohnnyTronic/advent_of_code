@@ -127,7 +127,7 @@ int main() {
 	}
 
 	long long part2MinLocation = seedToLocationConverter.SeedToLocation(rangeSeeds[0]);
-	long long count;
+	long long count = 0;
 	long long totalCount = rangeSeeds.size();
 	for (auto& rangeSeed : rangeSeeds) {
 		count++;
