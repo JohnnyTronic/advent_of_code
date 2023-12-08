@@ -61,6 +61,19 @@ private:
     
 };
 
+bool areColliding(GridItem& left, GridItem& right) {
+    if (left.minBoundX() > right.maxBoundX())
+        return false;
+    if (left.maxBoundX() < right.minBoundX())
+        return false;
+    if (left.minBoundY() > right.maxBoundY())
+        return false;
+    if (left.maxBoundY() < right.minBoundY())
+        return false;
+
+    return true;
+}
+
 int main()
 {
     std::cout << "Advent of Code 2023 - Day 3\n";
@@ -109,17 +122,10 @@ int main()
         //std::cout << "Checking " << partNumber.value;
         for (auto& symbol : symbols) {
             //std::cout << " against " << symbol.str << std::endl;
-            if (partNumber.minBoundX() > symbol.maxBoundX())
-                continue;
-            if (partNumber.maxBoundX() < symbol.minBoundX())
-                continue;
-            if (partNumber.minBoundY() > symbol.maxBoundY())
-                continue;
-            if (partNumber.maxBoundY() < symbol.minBoundY())
-                continue;
-
-            collidingParts.push_back(partNumber);
-            std::cout << "Collision between " << partNumber.value << " & " << symbol.str << std::endl;
+            if (areColliding(partNumber, symbol)) {
+                collidingParts.push_back(partNumber);
+                std::cout << "Collision between " << partNumber.value << " & " << symbol.str << std::endl;
+            }            
         }
     }
     std::cout << "Colliding parts count: " << collidingParts.size() << std::endl;
@@ -131,4 +137,27 @@ int main()
 
     
     std::cout << "Answer for Part 1 - Sum of symbol-adjacent part numbers: " << sumOfCollidingPartNumbers << std::endl;
+
+    // Part 2 - Gear Ratios
+    std::vector<GridItem> gears;
+    for (auto& symbol : symbols) {
+        if (symbol.str == "*")
+            gears.push_back(symbol);
+    }
+
+    int ratioSum = 0;
+    std::vector<GridItem> ratioGears;
+    for (auto& gear : gears) {
+        std::vector<GridItem> adjacentParts;
+        for (auto& part : partNumbers) {
+            if (areColliding(gear, part)) {
+                adjacentParts.push_back(part);
+            }
+        }
+        if (adjacentParts.size() == 2) {
+            ratioSum += adjacentParts[0].value* adjacentParts[1].value;
+        }
+    }
+    
+    std::cout << "Answer for Part 2 - Sum of Gear Ratios: " << ratioSum << std::endl;
 }
