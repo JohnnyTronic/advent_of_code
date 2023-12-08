@@ -22,6 +22,10 @@ public:
         return toReturn;
     }
 
+    void Reset() {
+        currentIndex = 0;
+    }
+
 private:
     std::string instructionLine;
 };
@@ -39,6 +43,36 @@ public:
 class NodeMap {
 public:
     std::map<std::string, Node> nodes;
+};
+
+class Ghost {
+public:
+    std::string startingNodeString;
+    Node& currentNode;
+    NodeMap& nodeMap;
+    Instructions instructions;   
+
+    Ghost(Node& startingNode, NodeMap& nodeMap, Instructions instructions) : currentNode(startingNode), nodeMap(nodeMap), instructions(instructions) {
+        startingNodeString = startingNode.value;       
+    }
+
+    void Step() {
+        char stepInstruction = this->instructions.GetNextStep();
+        if (stepInstruction == 'L') {
+            std::string nextNode = currentNode.left;
+            currentNode = nodeMap.nodes[nextNode];
+            //totalSteps++;
+        }
+        else {
+            std::string nextNode = currentNode.right;
+            currentNode = nodeMap.nodes[nextNode];
+            //totalSteps++;
+        }       
+    }
+
+    bool doesCurrentNodeEndWithZ() {
+        return currentNode.value[2] == 'Z';
+    }   
 };
 
 int main()
@@ -86,4 +120,46 @@ int main()
     }
 
     std::cout << "PART 1 ANSWER - Total step count: " << totalSteps << std::endl;
+
+    // Part 2 - Simultaneous Ghost pathing
+    instructions.Reset();
+
+    std::vector<std::string> ghostStartingNodes;
+    for (auto& node : nodeMap.nodes) {
+        if (node.first[2] == 'A')
+            ghostStartingNodes.push_back(node.first);
+    }
+
+    std::vector<Ghost> ghosts;
+    std::cout << "Ghost starting nodes: " << std::endl;
+    for (auto& startingNodeString : ghostStartingNodes) {
+        std::cout << startingNodeString << std::endl;
+        Node& startingNode = nodeMap.nodes[startingNodeString];
+        Ghost ghost(startingNode, nodeMap, instructions);
+        ghosts.push_back(ghost);
+    }
+
+    // Step all ghosts simultaneously until the all land on a ZNode
+    int allZStepCount = 0;
+    bool allOnZ = false;
+    while (!allOnZ) {
+        char nextInstruction = instructions.GetNextStep();
+        for (auto& ghost : ghosts) {
+            ghost.Step();
+        }
+        allZStepCount++;
+
+        allOnZ = true;
+        for (auto& ghost : ghosts) {
+            if (!ghost.doesCurrentNodeEndWithZ()) {
+                allOnZ = false;
+                //break;
+            }
+            else {
+                //std::cout << "Ghost " << ghost.startingNodeString << " landed on ZNode " << ghost.currentNode.value << " after " << allZStepCount << " steps." << std::endl;
+            }
+        }
+    }
+
+    std::cout << "PART B ANSWER - Number of steps until all ghosts are on ZNodes simultaneously: " << allZStepCount << std::endl;
 }
