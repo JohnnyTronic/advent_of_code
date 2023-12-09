@@ -33,45 +33,56 @@ private:
 class Node {
 public:
     std::string value;
-    std::string left;
-    std::string right;
+    std::string leftString;
+    std::string rightString;
+
+    Node* leftNode;
+    Node* rightNode;
+
     Node() {}
 
-    Node(std::string value, std::string left, std::string right) : value(value), left(left), right(right) {}
+    Node(std::string value, std::string left, std::string right) : value(value), leftString(left), rightString(right) {}
+
+    void SetUpNodeReferences(std::map<std::string, Node*>& nodeMap) {
+        leftNode = nodeMap[leftString];
+        rightNode = nodeMap[rightString];
+    }
 };
 
-class NodeMap {
-public:
-    std::map<std::string, Node> nodes;
-};
+//class NodeMap {
+//public:
+//    std::map<std::string, Node> nodes;
+//};
 
 class Ghost {
 public:
     std::string startingNodeString;
-    Node& currentNode;
-    NodeMap& nodeMap;
+    Node* currentNode;
+    //NodeMap& nodeMap;
     Instructions instructions;   
 
-    Ghost(Node& startingNode, NodeMap& nodeMap, Instructions instructions) : currentNode(startingNode), nodeMap(nodeMap), instructions(instructions) {
-        startingNodeString = startingNode.value;       
+    Ghost(Node* startingNode, Instructions instructions) : currentNode(startingNode), instructions(instructions) {
+        startingNodeString = startingNode->value;       
     }
 
     void Step() {
         char stepInstruction = this->instructions.GetNextStep();
         if (stepInstruction == 'L') {
-            std::string nextNode = currentNode.left;
-            currentNode = nodeMap.nodes[nextNode];
+            //std::string nextNode = currentNode.left;
+            //currentNode = nodeMap.nodes[nextNode];
+            currentNode = currentNode->leftNode;
             //totalSteps++;
         }
         else {
-            std::string nextNode = currentNode.right;
-            currentNode = nodeMap.nodes[nextNode];
+            //std::string nextNode = currentNode.right;
+            //currentNode = nodeMap.nodes[nextNode];
+            currentNode = currentNode->rightNode;
             //totalSteps++;
         }       
     }
 
     bool doesCurrentNodeEndWithZ() {
-        return currentNode.value[2] == 'Z';
+        return currentNode->value[2] == 'Z';
     }   
 };
 
@@ -88,7 +99,7 @@ int main()
     Instructions instructions(instructionsString);
 
     // Parse node map
-    NodeMap nodeMap;
+    std::map<std::string, Node*> nodeMap;
     std::string mapLine;
     std::getline(ifs, mapLine);
     std::regex nodeLinePattern(R"((\w\w\w) = \((\w\w\w), (\w\w\w))");
@@ -98,23 +109,29 @@ int main()
         if (!matchSuccess)
             std::cout << "Regex failure!!!" << std::endl;
 
-        Node newNode(match[1], match[2], match[3]);
-        nodeMap.nodes[match[1]] = newNode;
+        Node* newNode = new Node(match[1], match[2], match[3]);
+        nodeMap[match[1]] = newNode;
+    }
+
+    for (auto kvp : nodeMap) {
+        kvp.second->SetUpNodeReferences(nodeMap);
     }
 
     // Start walking the node map
-    Node currentNode = nodeMap.nodes["AAA"];
+    Node* currentNode = nodeMap["AAA"];
     int totalSteps = 0;
-    while (currentNode.value != "ZZZ") {
+    while (currentNode->value != "ZZZ") {
         char nextStep = instructions.GetNextStep();
         if (nextStep == 'L') {
-            std::string nextNode = currentNode.left;
-            currentNode = nodeMap.nodes[nextNode];
+            //std::string nextNode = currentNode.left;
+            //currentNode = nodeMap.nodes[nextNode];
+            currentNode = currentNode->leftNode;
             totalSteps++;
         }
         else {
-            std::string nextNode = currentNode.right;
-            currentNode = nodeMap.nodes[nextNode];
+            //std::string nextNode = currentNode.right;
+            //currentNode = nodeMap.nodes[nextNode];
+            currentNode = currentNode->rightNode;
             totalSteps++;
         }
     }
@@ -124,42 +141,73 @@ int main()
     // Part 2 - Simultaneous Ghost pathing
     instructions.Reset();
 
-    std::vector<std::string> ghostStartingNodes;
-    for (auto& node : nodeMap.nodes) {
-        if (node.first[2] == 'A')
-            ghostStartingNodes.push_back(node.first);
+    std::vector<Node*> ghostStartingNodes;
+    for (auto& kvp : nodeMap) {
+        if (kvp.first[2] == 'A')
+            ghostStartingNodes.push_back(kvp.second);
     }
 
     std::vector<Ghost> ghosts;
     std::cout << "Ghost starting nodes: " << std::endl;
-    for (auto& startingNodeString : ghostStartingNodes) {
-        std::cout << startingNodeString << std::endl;
-        Node& startingNode = nodeMap.nodes[startingNodeString];
-        Ghost ghost(startingNode, nodeMap, instructions);
+    for (auto& startingNode : ghostStartingNodes) {
+        std::cout << startingNode->value << std::endl;
+        Ghost ghost(startingNode, instructions);
         ghosts.push_back(ghost);
     }
 
-    // Step all ghosts simultaneously until the all land on a ZNode
-    int allZStepCount = 0;
-    bool allOnZ = false;
-    while (!allOnZ) {
-        char nextInstruction = instructions.GetNextStep();
-        for (auto& ghost : ghosts) {
+    std::map<std::string, int> ghostLoopSizes;
+    for (auto& ghost : ghosts) {
+        int stepCount = 0;
+        while (!ghost.doesCurrentNodeEndWithZ()) {
             ghost.Step();
+            stepCount++;
         }
-        allZStepCount++;
+        ghostLoopSizes[ghost.startingNodeString] = stepCount;
+    }
 
-        allOnZ = true;
-        for (auto& ghost : ghosts) {
-            if (!ghost.doesCurrentNodeEndWithZ()) {
-                allOnZ = false;
-                //break;
+    std::cout << "---Ghost Loop Sizes---" << std::endl;
+    for (auto& ghost : ghosts) {
+        std::cout << ghost.startingNodeString << ": " << ghostLoopSizes[ghost.startingNodeString] << std::endl;
+    }
+    
+    // Find Least Common Multiple of all loop sizes
+    std::vector<long long> startingLoopSizes;
+    std::vector<long long> lcm;
+    for (auto& ghostLoopSize : ghostLoopSizes) {
+        startingLoopSizes.push_back(ghostLoopSize.second);
+        lcm.push_back(ghostLoopSize.second);
+    }
+    auto areAllSame = [](std::vector<long long>& lcms) {
+        long long first = lcms.front();
+        for (int i = 1; i < lcms.size(); i++) {
+            if (lcms[i] != first)
+                return false;
+        }
+        return true;
+    };
+
+    auto findSmallestIndex = [](std::vector<long long>& lcms) -> int {
+        int smallestIndex = 0;
+        long long smallestValue = lcms[0];
+        for (int i = 1; i < lcms.size(); i++) {
+            if (lcms[i] < smallestValue) {
+                smallestIndex = i;
+                smallestValue = lcms[i];
             }
-            else {
-                //std::cout << "Ghost " << ghost.startingNodeString << " landed on ZNode " << ghost.currentNode.value << " after " << allZStepCount << " steps." << std::endl;
-            }
+        }
+        return smallestIndex;
+    };
+
+    long long targetValue = 15746133679061;
+    while (!areAllSame(lcm)) {
+        int smallestIndex = findSmallestIndex(lcm);
+        lcm[smallestIndex] += startingLoopSizes[smallestIndex];
+        if (lcm[smallestIndex] > targetValue) {
+            std::cout << "We've missed our target value!" << std::endl;
+            return 1;
         }
     }
 
-    std::cout << "PART B ANSWER - Number of steps until all ghosts are on ZNodes simultaneously: " << allZStepCount << std::endl;
+    std::cout << "PART 2 ANSWER - Lowest Common Multiple is " << lcm[0] << std::endl;
+    return 0;    
 }
