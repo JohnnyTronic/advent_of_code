@@ -9,10 +9,9 @@
 class History {
 public:
     std::string inputString;
-    std::vector<std::vector<long long>> values;
+    std::vector<long long> values;
 
-    History(std::string inputString) : inputString(inputString) {
-        std::vector<long long> rootValues;
+    History(std::string inputString) : inputString(inputString) {       
         std::regex pattern(R"(-?\d+)");
         auto numbersBegin = std::sregex_iterator(inputString.begin(), inputString.end(), pattern);
         auto numbersEnd = std::sregex_iterator();
@@ -20,37 +19,35 @@ public:
         for (std::sregex_iterator iter = numbersBegin; iter != numbersEnd; iter++) {
             std::smatch match = *iter;
             std::cout << match.str() << std::endl;
-            rootValues.push_back(std::stoll(match.str()));
-        }
-        values.push_back(rootValues);
-    }
-
-    void ComputeDelta(std::vector<long long> values, int& delta) {
-        if (IsAllZero(values)) {
-            delta = 0;
-            return;
-        }
-
-        std::vector<long long> diffValues;
-        for (int i = 0; i < values.size() - 1; i++) {
-            diffValues.push_back(values[i + 1] - values[i]); 
-        }
-
-        int delta = 0;
-        ComputeDelta(diffValues, delta);
-        long long nextValue = values[values.size() - 1] + delta;
-        values.push_back(nextValue);
-    }
-
-private:
-    bool IsAllZero(std::vector<long long> values) {
-        for (auto& value : values) {
-            if (value != 0)
-                return false;
-        }
-        return true;
-    }
+            values.push_back(std::stoll(match.str()));
+        }        
+    }     
 };
+
+bool IsAllZero(std::vector<long long> values) {
+    for (auto& value : values) {
+        if (value != 0)
+            return false;
+    }
+    return true;
+};
+
+void AppendNextValue(std::vector<long long>& values) {
+    std::vector<long long> deltas;
+    for (int i = 0; i < values.size() - 1; i++) {
+        long long delta = values[i + 1] - values[i];
+        deltas.push_back(delta);
+    }
+
+    if (IsAllZero(deltas)) {
+        long long tailValue = values.back();
+        values.push_back(tailValue);
+        return;
+    }
+
+    AppendNextValue(deltas);
+    values.push_back(values.back() + deltas.back());
+}
 
 int main()
 {
@@ -68,5 +65,15 @@ int main()
         histories.push_back(newHistory);
     }
 
+    for (auto& history : histories) {
+        AppendNextValue(history.values);
+    }
+
+    long long sumOfAllTailValues = 0;
+    for (auto& history : histories) {
+        sumOfAllTailValues += history.values.back();
+    }
+
+    std::cout << "PART 1 ANSWER - " << sumOfAllTailValues << std::endl;
     return 0;
 }
