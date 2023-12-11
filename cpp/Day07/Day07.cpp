@@ -299,20 +299,20 @@ int main()
 {
     std::cout << "Advent of Code 2023 - Day 07!\n";
 
-    Hand handA("J39Q5", 100);
-    Hand handB("2398Q", 200);
-    Hand handC("24972", 300);
-    Hand handD("2T7T7", 400);
-    Hand handE("JT7T7", 500);
-    Hand handF("TT7TJ", 500); // Was fullhouse should be 4ofakind
+    //Hand handA("J39Q5", 100);
+    //Hand handB("2398Q", 200);
+    //Hand handC("24972", 300);
+    //Hand handD("2T7T7", 400);
+    //Hand handE("JT7T7", 500);
+    //Hand handF("TT7TJ", 500); // Was fullhouse should be 4ofakind
     //std::vector<Hand> testHands{ handA, handB, handC, handD, handE };
     //std::sort(testHands.begin(), testHands.end(), [](auto& left, auto& right) {return SortTwoHands(left, right, true); });
     ////bool result = SortTwoHands(handA, handB, true);
-    ExpectClassification(handA, HandType::OnePair, true);
+    /*ExpectClassification(handA, HandType::OnePair, true);
     ExpectClassification(handB, HandType::HighCard, true);
     ExpectClassification(handC, HandType::OnePair, true);
     ExpectClassification(handD, HandType::TwoPair, true);
-    ExpectClassification(handE, HandType::FullHouse, true);
+    ExpectClassification(handE, HandType::FullHouse, true);*/
     //return 0;
 
     //std::ifstream ifs("test_input.txt");
