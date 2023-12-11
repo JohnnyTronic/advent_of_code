@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <deque>
 #include <set>
 #include <regex>
 #include <map>
@@ -9,7 +10,7 @@
 class History {
 public:
     std::string inputString;
-    std::vector<long long> values;
+    std::deque<long long> values;
 
     History(std::string inputString) : inputString(inputString) {       
         std::regex pattern(R"(-?\d+)");
@@ -24,7 +25,7 @@ public:
     }     
 };
 
-bool IsAllZero(std::vector<long long> values) {
+bool IsAllZero(std::deque<long long> values) {
     for (auto& value : values) {
         if (value != 0)
             return false;
@@ -32,8 +33,8 @@ bool IsAllZero(std::vector<long long> values) {
     return true;
 };
 
-void AppendNextValue(std::vector<long long>& values) {
-    std::vector<long long> deltas;
+void AppendNextValue(std::deque<long long>& values) {
+    std::deque<long long> deltas;
     for (int i = 0; i < values.size() - 1; i++) {
         long long delta = values[i + 1] - values[i];
         deltas.push_back(delta);
@@ -47,6 +48,23 @@ void AppendNextValue(std::vector<long long>& values) {
 
     AppendNextValue(deltas);
     values.push_back(values.back() + deltas.back());
+}
+
+void PrependPreviousValue(std::deque<long long>& values) {
+    std::deque<long long> deltas;
+    for (int i = 0; i < values.size() - 1; i++) {
+        long long delta = values[i + 1] - values[i];
+        deltas.push_back(delta);
+    }
+
+    if (IsAllZero(deltas)) {
+        long long frontValue = values.front();
+        values.push_front(frontValue);
+        return;
+    }
+
+    PrependPreviousValue(deltas);
+    values.push_front(values.front() - deltas.front());
 }
 
 int main()
@@ -75,5 +93,17 @@ int main()
     }
 
     std::cout << "PART 1 ANSWER - " << sumOfAllTailValues << std::endl;
+
+    // PART 2 - Extrapolate backwards in time
+    for (auto& history : histories) {
+        PrependPreviousValue(history.values);
+    }
+
+    long long sumOfAllFrontValues = 0;
+    for (auto& history : histories) {
+        sumOfAllFrontValues += history.values.front();
+    }
+
+    std::cout << "PART 2 ANSWER - Sum of all front values: " << sumOfAllFrontValues << std::endl;
     return 0;
 }
