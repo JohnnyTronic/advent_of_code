@@ -39,7 +39,7 @@ public:
     Node* leftNode;
     Node* rightNode;
 
-    Node() {}
+    //Node() {}
 
     Node(std::string value, std::string left, std::string right) : value(value), leftString(left), rightString(right) {}
 
