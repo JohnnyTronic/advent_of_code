@@ -25,8 +25,6 @@ std::vector<Vec2> GetPipeNeighbourOffsets(char& pipeType) {
     }
 }
 
-
-
 //std::vector<Vec2> FindNeighboursForStartingCell(const Vec2& startingCell, Grid& grid) {
 //}
 
