@@ -7,6 +7,8 @@
 #include <regex>
 #include <map>
 #include <thread>
+#include <semaphore>
+#include <mutex>
 
 // Example Regex pattern for 3,2,1 - [\.\?]*[#\?]{3}[\.\?]+[#\?]{2}[\.\?]+[#\?]{1}[\.\?]*
 
@@ -63,14 +65,21 @@ std::vector<std::string> GenerateSpringPossibilities(std::string candidateString
     return possibilities;
 }
 
+void ComputePossibilitiesRoutine(std::string expandedConditionChunk, std::regex legendRegex, std::counting_semaphore<10>& semaphore, std::mutex& scoreMutex, long long& expandedTotalPossibilities) {
+    auto possibilities = GenerateSpringPossibilities(expandedConditionChunk, legendRegex);
+    std::lock_guard<std::mutex> scoreLock(scoreMutex);
+    expandedTotalPossibilities += possibilities.size();
+    semaphore.release();
+}
+
 int main()
 {
     std::cout << "Advent of Code - Day 12\n";
 
     long long totalPossibilities{};
 
-    std::ifstream ifs("test_input.txt");
-    //std::ifstream ifs("input.txt");
+    //std::ifstream ifs("test_input.txt");
+    std::ifstream ifs("input.txt");
 
     std::regex springsChunkPattern(R"([\?.#]+(?=\s))");
     std::regex legendChunkPattern(R"(\s[,\d]+)");
@@ -110,6 +119,9 @@ int main()
     // Part 2 - Unfold the damned instructions!
     long long expandedTotalPossibilities = 0;
     std::vector<std::thread> threads;
+    std::counting_semaphore<10> semaphore(10);
+    std::mutex scoreMutex{};
+    int threadCount{};
     for (int i = 0; i < legendChunks.size(); i++) {
         std::string conditionChunk = conditionChunks[i];
         std::string legendChunk = legendChunks[i];
@@ -130,11 +142,15 @@ int main()
         if (!didMatch)
             throw;
 
-        std::thread([](auto& chunk, auto& regex) {
-            auto possibilities = GenerateSpringPossibilities(expandedConditionChunk, legendRegex);
-            expandedTotalPossibilities += possibilities.size();
-            }, expandedConditionChunk, legendRegex);
-        
+        semaphore.acquire();
+
+        std::cout << "Starting new thread: " << threadCount++ << std::endl;
+       auto newThread = std::thread(ComputePossibilitiesRoutine, expandedConditionChunk, legendRegex, std::ref(semaphore), std::ref(scoreMutex), std::ref(expandedTotalPossibilities));
+       threads.push_back(move(newThread));
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
     }
 
     std::cout << "PART 2 ANSWER - Total possibilities for expanded instruction set: " << expandedTotalPossibilities << "\n";
