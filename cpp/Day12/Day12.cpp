@@ -1,3 +1,5 @@
+// Solution adapted from https://www.reddit.com/r/adventofcode/comments/18hbbxe/2023_day_12python_stepbystep_tutorial_with_bonus/
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -10,67 +12,158 @@
 #include <semaphore>
 #include <mutex>
 
-// Example Regex pattern for 3,2,1 - [\.\?]*[#\?]{3}[\.\?]+[#\?]{2}[\.\?]+[#\?]{1}[\.\?]*
+static std::map<std::string, long long> memos{};
 
+long long calc(std::string record, std::vector<int> groups);
 
-std::string TransformLegendNumbersIntoLegendRegex(std::string legendNumbers) {
-    std::regex numberPattern(R"(\d+)");
-    auto replacedString = std::regex_replace(legendNumbers, numberPattern, R"([#\?]{$&})");
+// Logic that treats the first character as a #
+long long pound(std::string record, int nextGroup, std::vector<int> groups) {
 
-    std::regex commaPattern(R"(,)");
-    replacedString = std::regex_replace(replacedString, commaPattern, R"([\.\?]+)");
+    // If the first is a pound, then the first n characters must be able to be treated as a pound, hwere n is the first group number
+    std::string thisGroup = record.substr(0, nextGroup);
+    int qIndex = thisGroup.find('?');
+    while (qIndex != std::string::npos) {
+        thisGroup.replace(qIndex, 1, "#");
+        qIndex = thisGroup.find('?');
+    }
 
-    return replacedString;
+    // If the next group can't fit all the damaged springs, then abort
+    std::string comparisonGroup = "";
+    for (int i = 0; i < nextGroup; i++)
+        comparisonGroup += "#";
+    if (thisGroup != comparisonGroup) {
+        return 0;
+    }
+
+    // If the rest of the record is just the last group, then we're done and there's only one possibility
+    if (record.size() == nextGroup) {
+        // Make sure this is the last group
+        if (groups.size() == 1) {
+            // We are valid
+            return 1;
+        }
+        else {
+            // There's no more groups, we can't make it work
+            return 0;
+        }
+    }
+
+    // Make sure the character that follows this group can be a separator
+    if (record[nextGroup] == '?' || record[nextGroup] == '.') {
+        // It can be a separator, so skip it and reduce to the next group
+        groups.erase(groups.begin());
+        return calc(record.substr(nextGroup + 1), groups);
+    }
+
+    // Can't be handled, there are no possibilities
+    return 0;
 }
 
-std::regex CreateRegexForLegendNumbers(std::string legendString) {
-    std::string regexString = R"([\.\?]*)";
+// Logic that treats the first character as a dot
+long long dot(std::string record, std::vector<int> groups) {
+
+    // We just skip over the dot looking for the next pound
+    record.erase(record.begin());
+    return calc(record, groups);
+}
+
+long long calc(std::string record, std::vector<int> groups) {
+
+    std::string groupsString = "";
+    bool toRemoveComma = false;
+    for (auto group : groups) {
+        groupsString += std::to_string(group) + ',';
+        toRemoveComma = true;
+    }
+    if(toRemoveComma)
+        groupsString.pop_back();   
     
-    std::string legendNumbersAsRegexString = TransformLegendNumbersIntoLegendRegex(legendString);
-    regexString += legendNumbersAsRegexString;
-
-    regexString += R"([\.\?]*)";
-
-    return std::regex(regexString);
-}
-
-std::vector<std::string> GenerateSpringPossibilities(std::string candidateString, std::regex& legendRegex) {
-
-    std::vector<std::string> possibilities;
-
-    // Does candidateString qualify? If not, early return kills this branch of the multiverse
-    bool overallMatch = std::regex_match(candidateString, legendRegex);
-    if (!overallMatch)
-        return possibilities;
-
-    // Does candidateString contain at least one '?'
-    auto position = candidateString.find('?');
-    if (position == std::string::npos) {
-        possibilities.push_back(candidateString);
-        return possibilities;
+    std::string memoString = record + " " + groupsString;
+    if (memos.contains(memoString)) {
+        return memos[memoString];
     }
 
-    auto multiverseCandidateA = candidateString.replace(position, 1, "#");
-    auto multiverseAResult = GenerateSpringPossibilities(multiverseCandidateA, legendRegex);
-    if (multiverseAResult.size() > 0) {
-        possibilities.insert(possibilities.end(), multiverseAResult.begin(), multiverseAResult.end());
+    long long out{};
+
+    // Did we run out of groups? We might still be valid
+    if (groups.size() == 0) {
+
+        // Make sure there aren't any more damaged springs, if so, we're valid
+        if (record.find('#') == std::string::npos) {
+            // This will return true even if record is empty, which is valid
+            return 1;
+        }
+        else {
+            // More damaged springs that we can't fit
+            return 0;
+        }
     }
 
-    auto multiverseCandidateB = candidateString.replace(position, 1, ".");
-    auto multiverseBResult = GenerateSpringPossibilities(multiverseCandidateB, legendRegex);
-    if (multiverseBResult.size() > 0) {
-        possibilities.insert(possibilities.end(), multiverseBResult.begin(), multiverseBResult.end());
+    // There are more groups but not more records
+    if (record.size() == 0) {
+        // We can't fit, exit
+        return 0;
     }
 
-    return possibilities;
+    // Look at the next element in each record and group
+    char nextCharacter = record[0];
+    int nextGroup = groups[0];
+
+    if (nextCharacter == '#') {
+        out = pound(record, nextGroup, groups);
+    } else if (nextCharacter == '.') {
+        out = dot(record, groups);
+    }
+    else if (nextCharacter == '?') {
+        // This character could be either character, so we're explore both possibilities
+        out = dot(record, groups) + pound(record, nextGroup, groups);
+    }
+    else
+        throw;
+
+    memos[memoString] = out;
+    return out;    
 }
 
-void ComputePossibilitiesRoutine(std::string expandedConditionChunk, std::regex legendRegex, std::counting_semaphore<10>& semaphore, std::mutex& scoreMutex, long long& expandedTotalPossibilities) {
-    auto possibilities = GenerateSpringPossibilities(expandedConditionChunk, legendRegex);
-    std::lock_guard<std::mutex> scoreLock(scoreMutex);
-    expandedTotalPossibilities += possibilities.size();
-    semaphore.release();
+long long DoPart2() {
+    long long totalPossibilities = 0;
+
+    //std::ifstream ifs("test_input.txt");
+    std::ifstream ifs("input.txt");
+
+    std::string parsedLine;
+    while (ifs.good()) {
+        std::getline(ifs, parsedLine);
+
+        int spaceIndex = parsedLine.find(' ');
+        std::string record = parsedLine.substr(0, spaceIndex);
+        std::string rawGroups = parsedLine.substr(spaceIndex + 1);
+
+        std::vector<int> groups{};
+        int commaIndex = rawGroups.find(',');
+        while (commaIndex != std::string::npos) {
+            groups.push_back(std::stoi(rawGroups.substr(0, commaIndex)));
+            rawGroups = rawGroups.substr(commaIndex + 1);
+            commaIndex = rawGroups.find(',');
+        }
+        groups.push_back(std::stoi(rawGroups));
+
+        std::string xRecord = record;
+        std::vector<int> xGroups = groups;
+        for (int r = 0; r < 4; r++) {
+            xRecord += "?" + record;
+            xGroups.insert(xGroups.begin(), groups.begin(), groups.end());
+        }
+
+        totalPossibilities += calc(xRecord, xGroups);
+    }
+
+    std::cout << "PART 2 ANSWER - Total possibilities for expanded instruction set: " << totalPossibilities << "\n";
+
+    return totalPossibilities;
 }
+
+
 
 int main()
 {
@@ -80,80 +173,31 @@ int main()
 
     //std::ifstream ifs("test_input.txt");
     std::ifstream ifs("input.txt");
-
-    std::regex springsChunkPattern(R"([\?.#]+(?=\s))");
-    std::regex legendChunkPattern(R"(\s[,\d]+)");
-    std::regex legendNumberPattern(R"((\d+))");
-    std::string parsedLine;
-    std::vector<std::string> conditionChunks;
-    std::vector<std::string> legendChunks;
+      
+    std::string parsedLine; 
     while (ifs.good()) {
         std::getline(ifs, parsedLine);
-            
-        std::smatch springsChunkMatch;
-        std::regex_search(parsedLine, springsChunkMatch, springsChunkPattern);
-        std::string springsChunk = springsChunkMatch.str();
-        conditionChunks.push_back(springsChunk);
-
-        std::smatch legendChunkMatch;
-        std::regex_search(parsedLine, legendChunkMatch, legendChunkPattern);
-
-        std::string legendChunk = legendChunkMatch.str();
-        std::regex spaceChopperPattern(R"(^\s*)");
-        legendChunk = std::regex_replace(legendChunk, spaceChopperPattern, "");
-        legendChunks.push_back(legendChunk);
         
-        //auto legendRegex = CreateRegexForLegendNumbers(legendChunk);
+        int spaceIndex = parsedLine.find(' ');
+        std::string record = parsedLine.substr(0, spaceIndex);
+        std::string rawGroups = parsedLine.substr(spaceIndex + 1);
 
-        //// Sanity check: does legendRegex match against the root springs chunk?
-        //bool didMatch = std::regex_match(springsChunk, legendRegex);
-        //if (!didMatch)
-        //    throw;
+        std::vector<int> groups{};
+        int commaIndex = rawGroups.find(',');
+        while (commaIndex != std::string::npos) {
+            groups.push_back(std::stoi(rawGroups.substr(0, commaIndex)));
+            rawGroups = rawGroups.substr(commaIndex + 1);
+            commaIndex = rawGroups.find(',');
+        }
+        groups.push_back(std::stoi(rawGroups));
 
-        //auto possibilities = GenerateSpringPossibilities(springsChunk, legendRegex);
-        //totalPossibilities += possibilities.size();
+        totalPossibilities += calc(record, groups);
     }
 
     std::cout << "PART 1 ANSWER - Total possible arrangements: " << totalPossibilities << "\n";
 
     // Part 2 - Unfold the damned instructions!
-    long long expandedTotalPossibilities = 0;
-    std::vector<std::thread> threads;
-    std::counting_semaphore<10> semaphore(10);
-    std::mutex scoreMutex{};
-    int threadCount{};
-    for (int i = 0; i < legendChunks.size(); i++) {
-        std::string conditionChunk = conditionChunks[i];
-        std::string legendChunk = legendChunks[i];
-
-        std::string expandedConditionChunk = conditionChunk;
-        std::string expandedLegendChunk = legendChunk;
-        for (int r = 0; r < 4; r++) {
-            expandedConditionChunk += "?" + conditionChunk;
-            expandedLegendChunk += "," + legendChunk;
-        }
-
-        std::cout << "Expanded chunks: " << expandedConditionChunk << ", " << expandedLegendChunk << "\n";
-
-        auto legendRegex = CreateRegexForLegendNumbers(expandedLegendChunk);
-
-        // Sanity check: does legendRegex match against the root springs chunk?
-        bool didMatch = std::regex_match(expandedConditionChunk, legendRegex);
-        if (!didMatch)
-            throw;
-
-        semaphore.acquire();
-
-        std::cout << "Starting new thread: " << threadCount++ << std::endl;
-       auto newThread = std::thread(ComputePossibilitiesRoutine, expandedConditionChunk, legendRegex, std::ref(semaphore), std::ref(scoreMutex), std::ref(expandedTotalPossibilities));
-       threads.push_back(move(newThread));
-    }
-
-    for (auto& thread : threads) {
-        thread.join();
-    }
-
-    std::cout << "PART 2 ANSWER - Total possibilities for expanded instruction set: " << expandedTotalPossibilities << "\n";
-
+    DoPart2();
+    
     return 0;
 }
