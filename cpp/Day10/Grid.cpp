@@ -44,7 +44,7 @@ public:
 
 		auto left = startingCoord + Vec2(-1, 0);
 		if (left.x >= 0)
-			neighbours.push_back(down);
+			neighbours.push_back(left);
 
 		return neighbours;
 	}
