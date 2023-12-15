@@ -6,35 +6,63 @@
 #include <vector>
 #include <sstream>
 
+class SpaceLine {
+public:
+	long expandedSize;
+	SpaceLine(long expandedSize) : expandedSize(expandedSize) {}
+};
+
 class Grid {
 public:
+	std::vector<Cell*> galaxies;
+	std::vector<SpaceLine> rows;
+	std::vector<SpaceLine> columns;
+
 	Grid(std::vector<std::string> rowStrings) {
+
+		// Record galaxies
 		for (int y = 0; y < rowStrings.size(); y++) {
 			std::string row = rowStrings[y];
-			std::vector<Cell*> rowCells;
 			for (int x = 0; x < row.size(); x++) {
 				char character = row[x];
-				Cell* newCell = new Cell(character);
-				rowCells.push_back(newCell);
+				if (character == '#') {
+					Cell* newCell = new Cell(character, Vec2(x,y));
+					galaxies.push_back(newCell);
+				}
 			}
-			content.push_back(rowCells);
+		}
+
+		// Record rows
+		for (int y = 0; y < rowStrings.size(); y++) {
+			SpaceLine newRow(1);
+			rows.push_back(newRow);
+		}
+
+		// Record columns
+		for (int x = 0; x < rowStrings[0].size(); x++) {
+			SpaceLine newColumn(1);
+			columns.push_back(newColumn);
 		}
 	}
 
 	int GetWidth() {
-		return content[0].size();
+		return columns.size();
 	}
 
 	int GetHeight() {
-		return content.size();
+		return rows.size();
 	}
 
-	Cell* GetCellAt(const Vec2& coord) {
-		return content[coord.y][coord.x];
+	/*Cell* GetCellAt(const Vec2& coord) {
+		for (auto galaxy : galaxies) {
+			if (galaxy->position == coord)
+				return galaxy;
+		}
+		return nullptr;
 	}
 
 	std::vector<Cell*>& GetRow(int y) {
-		return content[y];
+		return rows[y];
 	}
 
 	std::vector<Cell*> GetColumn(int x) {
@@ -44,49 +72,28 @@ public:
 			column.push_back(row[x]);
 		}
 		return column;
+	}*/
+
+	void ExpandColumn(int x, long times) {
+		columns[x].expandedSize = times;		
 	}
 
-	void InsertColumnBefore(int x) {
-		for (int y = 0; y < GetHeight(); y++) {
-			auto& row = content[y];
-			auto newCell = new Cell('.');
-			auto it = row.begin();
-			row.insert(row.begin() + x, newCell);
-		}
+	void ExpandRow(int y, long times) {
+		rows[y].expandedSize = times;		
 	}
 
-	void InsertRowBefore(int y) {
-		std::vector<Cell*> newRow;
-		for (int x = 0; x < GetWidth(); x++) {
-			auto newCell = new Cell('.');
-			newRow.push_back(newCell);
-		}
-		auto it = content.begin();
-		content.insert(it + y, newRow);
-	}
-
-	void RefreshCellPositionData() {
-		for (int y = 0; y < GetHeight(); y++) {
-			for (int x = 0; x < GetWidth(); x++) {
-				content[y][x]->position = Vec2(x, y);
-			}
-		}
-	}
-
-	void PrintGrid() {
+	/*void PrintGrid() {
 		std::cout << "---Grid--------------------\n";
-		for (int y = 0; y < GetHeight(); y++) {
-			for (int x = 0; x < GetWidth(); x++) {
-				auto cell = GetCellAt(Vec2(x, y));				
+		for (int baseY = 0; baseY < rows.size(); baseY++) {
+			for (int baseX = 0; baseX < columns.size(); baseX++) {
+				auto cell = GetCellAt(Vec2(baseX, baseY));				
 				std::cout << cell->content;				
 			}
 			std::cout << "\n";
 		}
 		std::cout << "---------------------------\n";
-	}
+	}*/
 
-private:
-	std::vector<std::vector<Cell*>> content;
 };
 
 #endif

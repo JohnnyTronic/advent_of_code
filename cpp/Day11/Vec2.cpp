@@ -13,11 +13,11 @@ static std::ostream& operator<<(std::ostream& os, const Vec2& vec) {
 	return os;
 }
 
-static bool operator==(Vec2& lhs, Vec2& rhs) {
+static bool operator==(const Vec2& lhs, const Vec2& rhs) {
 	return (lhs.x == rhs.x && lhs.y == rhs.y);
 }
 
-static bool operator!=(Vec2& lhs, Vec2& rhs) {
+static bool operator!=(const Vec2& lhs, const Vec2& rhs) {
 	return lhs.x != rhs.x || lhs.y != rhs.y;
 }
 #endif

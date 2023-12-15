@@ -8,7 +8,7 @@ public:
     char content;
     Vec2 position;
 
-    Cell(char content) : content(content), position(Vec2(0,0)) {}
+    Cell(char content, Vec2 position) : content(content), position(position) {}
 };
 
 #endif
