@@ -64,6 +64,26 @@ public:
 		return neighbourCells;
 	}
 
+	void PrintGrid(bool mainLoopOnly) {
+		std::cout << "---Grid--------------------\n";
+		for (int y = 0; y < GetHeight(); y++) {
+			for (int x = 0; x < GetWidth(); x++) {
+				auto cell = GetCellAt(Vec2(x, y));
+				if (!mainLoopOnly) {
+					std::cout << cell->content;
+				}
+				else {
+					if (cell->isMainLoop)
+						std::cout << cell->content;
+					else
+						std::cout << "e";
+				}
+			}
+			std::cout << "\n";
+		}
+		std::cout << "---------------------------\n";
+	}
+
 private:
 	std::vector<std::vector<Cell*>> content;
 };

@@ -110,25 +110,11 @@ private:
     Grid& grid;
 };
 
-void PrintGrid(Grid& grid, bool mainLoopOnly) {
-    std::cout << "---Grid--------------------\n";
-    for (int y = 0; y < grid.GetHeight(); y++) {
-        for (int x = 0; x < grid.GetWidth(); x++) {
-            auto cell = grid.GetCellAt(Vec2(x, y));
-            if (!mainLoopOnly) {
-                std::cout << cell->content;
-            }
-            else {
-                if (cell->isMainLoop)
-                    std::cout << cell->content;
-                else
-                    std::cout << " ";
-            }
-        }
-        std::cout << "\n";
-    }
-    std::cout << "---------------------------\n";
-}
+enum class CollinearState {
+    None,
+    EnteredFromBottom,
+    EnteredFromTop
+};
 
 int main()
 {
@@ -145,7 +131,7 @@ int main()
     }
 
     Grid grid(parsedLines);
-    PrintGrid(grid, false);
+    grid.PrintGrid(false);
     
     Vec2 startCoord = FindStartCoordinate(grid);
     Cell* startCell = grid.GetCellAt(startCoord);
@@ -168,11 +154,77 @@ int main()
         auto cell0 = grid.GetCellAt(pipeWalkers[0].position);
         cell0->isMainLoop = true;
         auto cell1 = grid.GetCellAt(pipeWalkers[1].position);
-        cell0->isMainLoop = true;
+        cell1->isMainLoop = true;
     }
 
-    PrintGrid(grid, true);
+    grid.PrintGrid(true);
 
     std::cout << "PART 1 ANSWER - How far does each pipe walker travel? " << pipeWalkers[0].steps << "\n";
+
+    // Part 2 - Counting interior cells
+    long long interiorCellCount = 0;
+    bool scannerInside = false;
+    CollinearState collinearState = CollinearState::None;
+    for (int y = 0; y < grid.GetHeight(); y++) {
+        collinearState = CollinearState::None;
+        scannerInside = false;
+        for (int x = 0; x < grid.GetWidth(); x++) {
+            Cell* cell = grid.GetCellAt(Vec2(x, y));
+            if (cell->isMainLoop) {
+                // Consider crossings
+                switch (cell->content) {
+                case '|': {
+                    scannerInside = !scannerInside;
+                    break;
+                }
+                case 'F': {
+                    if (collinearState == CollinearState::None)
+                        collinearState = CollinearState::EnteredFromBottom;
+                    else if (collinearState == CollinearState::EnteredFromBottom)
+                        std::cout << "F--F This shouldn't be possible.\n";
+                    else if (collinearState == CollinearState::EnteredFromTop)
+                        std::cout << "J--F shouldn't be possible.\n";
+                    break;
+                }
+                case 'L': {
+                    if (collinearState == CollinearState::None)
+                        collinearState = CollinearState::EnteredFromTop;
+                    else
+                        std::cout << "Something is wrong.\n";
+                }
+                case '-':
+                    if (collinearState == CollinearState::None)
+                        std::cout << ".-- should not be possible.\n";
+                    break;
+                case 'J': {
+                    if (collinearState == CollinearState::EnteredFromBottom) {
+                        scannerInside = !scannerInside;
+                        collinearState = CollinearState::None;
+                    }
+                    else if (collinearState == CollinearState::EnteredFromTop) {
+                        collinearState = CollinearState::None;
+                    }
+                    break;
+                }
+                case '7':
+                    if (collinearState == CollinearState::EnteredFromTop) {
+                        scannerInside = !scannerInside;
+                        collinearState = CollinearState::None;
+                    }
+                    else if (collinearState == CollinearState::EnteredFromBottom) {
+                        collinearState = CollinearState::None;
+                    }
+
+                }
+            }
+            else {
+                if (scannerInside)
+                    interiorCellCount++;
+            }
+        }
+    }
+
+    std::cout << "PART 2 ANSWER - How many cells are contained inside the main loop? " << interiorCellCount << "\n";
+
     return 0;
 }
