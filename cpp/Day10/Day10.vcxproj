@@ -127,6 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Cell.cpp" />
     <ClCompile Include="Day10.cpp" />
     <ClCompile Include="Direction.h" />
     <ClCompile Include="Grid.cpp" />

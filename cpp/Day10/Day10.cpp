@@ -10,6 +10,8 @@
 #include <regex>
 #include <map>
 
+
+
 std::vector<Vec2> GetPipeNeighbourOffsets(char& pipeType) {
     std::vector<Vec2> neighbours;
     switch (pipeType) {
@@ -29,8 +31,8 @@ Vec2 FindStartCoordinate(Grid& grid) {
     Vec2 startCoord = Vec2(0, 0);
     for (int x = 0; x < grid.GetWidth(); x++) {
         for (int y = 0; y < grid.GetHeight(); y++) {
-            auto c = grid.GetCharAt(Vec2(x, y));
-            if (c == 'S') {
+            auto cell = grid.GetCellAt(Vec2(x, y));
+            if (cell->content == 'S') {
                 startCoord = Vec2(x, y);
             }
         }
@@ -39,12 +41,12 @@ Vec2 FindStartCoordinate(Grid& grid) {
     return startCoord;
 }
 
-bool DoesCellConnectToCell(Vec2& cellA, Vec2& cellB, Grid& grid) {
-    char charA = grid.GetCharAt(cellA);
+bool DoesCellConnectToCell(Cell* cellA, Cell* cellB, Grid& grid) {
+    char charA = cellA->content;
     auto offsets = GetPipeNeighbourOffsets(charA);
     for (auto& offset : offsets) {
-        Vec2 resultantCoord = offset + cellA;
-        if (resultantCoord == cellB) {
+        Vec2 resultantCoord = offset + cellA->position;
+        if (resultantCoord == cellB->position) {
             return true;
         }
     }
@@ -52,25 +54,27 @@ bool DoesCellConnectToCell(Vec2& cellA, Vec2& cellB, Grid& grid) {
     return false;
 }
 
-std::vector<Vec2> GetCoordsConnectedTo(Vec2 center, Grid& grid) {
-    char centerChar = grid.GetCharAt(center);
+std::vector<Cell*> GetCellsConnectedTo(Vec2 center, Grid& grid) {
+    Cell* centerCell = grid.GetCellAt(center);
+    char centerChar = centerCell->content;
 
-    std::vector<Vec2> pipeNeighbours{};
+    std::vector<Cell*> pipeNeighbours{};
     auto neighbourOffsets = GetPipeNeighbourOffsets(centerChar);
     for (auto offset : neighbourOffsets) {
         auto resultantCoord = center + offset;
-        pipeNeighbours.push_back(resultantCoord);
+        auto resultantCell = grid.GetCellAt(resultantCoord);
+        pipeNeighbours.push_back(resultantCell);
     }
 
     return pipeNeighbours;
 }
 
-Vec2 GetCoordConnectedToCenterExcluding(Vec2 center, Grid& grid, Vec2 exclude) {
-    auto connectedNeighbours = GetCoordsConnectedTo(center, grid);
-    std::vector<Vec2> connectedNeighbourPostExclusion{};
+Cell* GetCellConnectedToCenterExcluding(Vec2 center, Grid& grid, Vec2 exclude) {
+    auto connectedNeighbours = GetCellsConnectedTo(center, grid);
+    std::vector<Cell*> connectedNeighbourPostExclusion{};
     for (auto neighbour : connectedNeighbours)
     {
-        if (neighbour != exclude)
+        if (neighbour->position != exclude)
             connectedNeighbourPostExclusion.push_back(neighbour);
     }
     
@@ -84,7 +88,6 @@ class PipeWalker {
 public:
     Vec2 position;
     Vec2 previousPosition;
-    Grid& grid;
     long long steps = 1;
 
     PipeWalker(Vec2 position, Vec2 previousPosition, Grid& grid) : position(position), previousPosition(previousPosition), grid(grid) {}
@@ -99,10 +102,33 @@ public:
     }
 
     Vec2 PreviewNextPosition() {
-        auto nextPosition = GetCoordConnectedToCenterExcluding(position, grid, previousPosition);
-        return nextPosition;
+        auto nextCell = GetCellConnectedToCenterExcluding(position, grid, previousPosition);
+        return nextCell->position;
     }
+
+private:
+    Grid& grid;
 };
+
+void PrintGrid(Grid& grid, bool mainLoopOnly) {
+    std::cout << "---Grid--------------------\n";
+    for (int y = 0; y < grid.GetHeight(); y++) {
+        for (int x = 0; x < grid.GetWidth(); x++) {
+            auto cell = grid.GetCellAt(Vec2(x, y));
+            if (!mainLoopOnly) {
+                std::cout << cell->content;
+            }
+            else {
+                if (cell->isMainLoop)
+                    std::cout << cell->content;
+                else
+                    std::cout << " ";
+            }
+        }
+        std::cout << "\n";
+    }
+    std::cout << "---------------------------\n";
+}
 
 int main()
 {
@@ -119,22 +145,33 @@ int main()
     }
 
     Grid grid(parsedLines);
+    PrintGrid(grid, false);
     
     Vec2 startCoord = FindStartCoordinate(grid);
+    Cell* startCell = grid.GetCellAt(startCoord);
+    startCell->isMainLoop = true;
     std::cout << "Found starting coord: " << startCoord << "\n";
-    std::vector<Vec2> startingNeighbours = grid.GetNeighbourCoords(startCoord);
-    std::vector<Vec2> cellsConnectedToStart;
-    std::copy_if(startingNeighbours.begin(), startingNeighbours.end(), std::back_inserter(cellsConnectedToStart), [&startCoord, &grid](Vec2 v) {return DoesCellConnectToCell(v, startCoord, grid); });
+
+    std::vector<Cell*> startingNeighbours = grid.GetNeighbourCells(startCoord);
+    std::vector<Cell*> cellsConnectedToStart;
+    std::copy_if(startingNeighbours.begin(), startingNeighbours.end(), std::back_inserter(cellsConnectedToStart), [&startCell, &grid](Cell* c) {return DoesCellConnectToCell(c, startCell, grid); });
     std::vector<PipeWalker> pipeWalkers{};
     for (auto cell : cellsConnectedToStart) {
-        PipeWalker walker(cell, startCoord, grid);
+        cell->isMainLoop = true;
+        PipeWalker walker(cell->position, startCoord, grid);
         pipeWalkers.push_back(walker);
     }
             
     while (!(pipeWalkers[0].position == pipeWalkers[1].position)) {
         pipeWalkers[0].StepForward();
-        pipeWalkers[1].StepForward();       
+        pipeWalkers[1].StepForward(); 
+        auto cell0 = grid.GetCellAt(pipeWalkers[0].position);
+        cell0->isMainLoop = true;
+        auto cell1 = grid.GetCellAt(pipeWalkers[1].position);
+        cell0->isMainLoop = true;
     }
+
+    PrintGrid(grid, true);
 
     std::cout << "PART 1 ANSWER - How far does each pipe walker travel? " << pipeWalkers[0].steps << "\n";
     return 0;
