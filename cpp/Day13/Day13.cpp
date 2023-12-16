@@ -2,10 +2,13 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <tuple>
 
 class Pattern {
 public:
     std::vector<std::string> content;
+    std::string unsmudgedSymmetryCode = "";
+    
 
     int GetWidth() {
         return content[0].size();
@@ -16,7 +19,17 @@ public:
     }
 };
 
-long long CalculatePatternScore(Pattern& pattern) {
+bool DoSymbolsMatch(char lhs, char rhs) {
+    if ((lhs == '.' || lhs == '!') && (rhs=='.' || rhs == '!')) 
+        return true;
+
+    if ((lhs == '#' || lhs == 'X') && (rhs == '#' || rhs == 'X'))
+        return true;
+
+    return false;
+}
+
+std::tuple<long long, std::string> CalculatePatternScore(Pattern& pattern) {
     // Check for vertical symmetry
     for (int axisAfterRow = 0; axisAfterRow < pattern.GetHeight() - 1; axisAfterRow++) {
         for (int column = 0; column < pattern.GetWidth(); column++) {
@@ -28,7 +41,7 @@ long long CalculatePatternScore(Pattern& pattern) {
 
                 char focusChar = pattern.content[focusRow][column];
                 char testChar = pattern.content[testRow][column];
-                if (focusChar != testChar) {
+                if (!DoSymbolsMatch(focusChar, testChar)) {
                     // No symmetry here. Advance the mirror axis
                     column = std::numeric_limits<int>::max() - 1;
                     break;
@@ -36,7 +49,10 @@ long long CalculatePatternScore(Pattern& pattern) {
             }
 
             if (column == pattern.GetWidth() - 1) {
-                return (axisAfterRow + 1) * 100;
+                std::string symmetryCode = std::to_string(axisAfterRow) + "V";
+                if (pattern.unsmudgedSymmetryCode.empty() || symmetryCode != pattern.unsmudgedSymmetryCode) {
+                    return {(axisAfterRow + 1) * 100, symmetryCode};
+                }                
             }
         }
 
@@ -57,7 +73,7 @@ long long CalculatePatternScore(Pattern& pattern) {
 
                 char focusChar = focusRow[focusColumn];
                 char testChar = focusRow[testColumn];
-                if (focusChar != testChar) {
+                if (!DoSymbolsMatch(focusChar, testChar)) {
                     // No symmetry here, advance the mirror axis
                     row = std::numeric_limits<int>::max() -1 ;
                     break;                    
@@ -65,14 +81,14 @@ long long CalculatePatternScore(Pattern& pattern) {
             }
 
             if (row == pattern.GetHeight() - 1) {
-                return axisAfterColumn + 1;
+                std::string symmetryCode = std::to_string(axisAfterColumn) + "H";
+                if(pattern.unsmudgedSymmetryCode.empty() || pattern.unsmudgedSymmetryCode != symmetryCode)
+                    return { axisAfterColumn + 1, symmetryCode };
             }
         }
-        
-
     }
 
-    return 0;
+    return { 0,"" };
 }
 
 int main()
@@ -97,13 +113,41 @@ int main()
     }
     patterns.push_back(newPattern);
 
+
+    // Part 1
     long long score = 0;
     for (auto& pattern : patterns) {
-        long long patternScore = CalculatePatternScore(pattern);
+        auto result = CalculatePatternScore(pattern);
+        long long patternScore = std::get<0>(result);
+        pattern.unsmudgedSymmetryCode = std::get<1>(result);
         score += patternScore;
     }
 
     std::cout << "PART 1 ANSWER - Total scored lines: " << score << "\n";
+
+    // Part 2 - One smudge (flipped symbol) per pattern
+    long long smudgeScore = 0;
+    for (auto& pattern : patterns) {
+        for (int y = 0; y < pattern.GetHeight(); y++) {
+            for (int x = 0; x < pattern.GetWidth(); x++) {                
+                char originalSymbol = pattern.content[y][x];
+                pattern.content[y][x] = originalSymbol == '.' ? 'X' : '!'; // Flip the symbol
+                auto result = CalculatePatternScore(pattern);
+                long long potentialScore = std::get<0>(result);           
+                std::string smudgedSymmetryCode = std::get<1>(result);
+                if (potentialScore != 0 && smudgedSymmetryCode != pattern.unsmudgedSymmetryCode) {
+                    smudgeScore += potentialScore;
+                    y = std::numeric_limits<int>::max() - 1;
+                    break;
+                }
+                // No symmertry found, revert the smudge
+                pattern.content[y][x] = originalSymbol;
+            }
+        }
+
+    }
+    
+    std::cout << "PART 2 ANSWER - Total scored lines with one smudge per pattern: " << smudgeScore << "\n";
 
     return 0;
 }
