@@ -25,6 +25,7 @@
   <ItemGroup>
     <Text Include="test_input.txt" />
     <Text Include="input.txt" />
+    <Text Include="grid_after_million_spins.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vec2.h">

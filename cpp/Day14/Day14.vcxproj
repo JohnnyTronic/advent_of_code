@@ -131,6 +131,7 @@
     <ClCompile Include="Vec2.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="grid_after_million_spins.txt" />
     <Text Include="input.txt" />
     <Text Include="test_input.txt" />
   </ItemGroup>
