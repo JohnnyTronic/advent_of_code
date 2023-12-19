@@ -18,9 +18,26 @@
     <ClCompile Include="Day16.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Grid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GridCell.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Vec2.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Beam.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="test_input.txt" />
     <Text Include="input.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Grid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
