@@ -6,15 +6,19 @@
 #include <set>
 #include <map>
 #include <queue>
+#include <limits>
 
 class Vec2 {
 public:
-    int x;
-    int y;
+    int x{};
+    int y{};
+    Vec2();
     Vec2(int x, int y) : x(x), y(y) {}
+
+    //bool operator<(const Vec2& other) const { return x < other.x && y < other.y; };
 };
 
-static Vec2 operator+(Vec2 lhs, Vec2 rhs) {
+static Vec2 operator+(const Vec2& lhs, const Vec2& rhs) {
     return Vec2(lhs.x + rhs.x, lhs.y + rhs.y);
 }
 
@@ -30,17 +34,38 @@ static bool operator!=(const Vec2& lhs, const Vec2& rhs) {
     return lhs.x != rhs.x || lhs.y != rhs.y;
 }
 
-class Node {
+const Vec2 NORTH = Vec2(0, -1);
+const Vec2 SOUTH = Vec2(0, 1);
+const Vec2 EAST = Vec2(1, 0);
+const Vec2 WEST = Vec2(-1, 0);
+
+struct Node {
 public:
-    int value;
-    Vec2 position;
-    long priority{};
-    Node(int value, Vec2 position) : value(value), position(position) {}
+    Vec2 position{};
+    //Vec2 previousPosition;
+    Node* previousNode;
+    int steps = 0;
+    long costSoFar{};
+   
+    Node(Vec2 position, Node* previousNode, int steps, long costSoFar) : position(position), previousNode(previousNode), steps(steps), costSoFar(costSoFar) {}
+
+    bool operator==(const Node& other) const { return position == other.position && &previousNode == &other.previousNode && steps == other.steps && costSoFar == other.costSoFar; }
+    bool operator<(const Node& other) const { return costSoFar < other.costSoFar; }    
+
+    long long Hash() {
+        long hash = (position.x) + (position.y << 4);
+        //if (previousNode)
+          //  hash += (previousNode->position.x << 12) + (previousNode->position.y << 16);
+       
+        return hash;
+    }
 };
 
+
+template <typename T>
 class Grid {
 public:
-    std::vector<std::vector<Node*>> content;
+    std::vector<std::vector<int>> content;
     int width;
     int height;
 
@@ -48,101 +73,124 @@ public:
         width = input[0].size();
         height = input.size();
         for (int y = 0; y < height; y++) {
-            std::vector<Node*> row;
+            std::vector<int> row;
             for (int x = 0; x < width; x++) {
                 int value = input[y][x] - '0';
-                Node* node = new Node(value, Vec2(x,y));
-                row.push_back(node);
+                row.push_back(value);
             }
             content.push_back(row);
         }
     } 
 
-    Node* GetNodeAt(Vec2 position) {
+    T Get(Vec2 position) const {
         return content[position.y][position.x];
     }
 
-    std::vector<Node*> GetNodeNeighbours(Node* node) {
-        const Vec2& position = node->position;
-        std::vector<Vec2> neighbourPositions;
-        neighbourPositions.push_back(position + Vec2(0, -1));
-        neighbourPositions.push_back(position + Vec2(0, 1));
-        neighbourPositions.push_back(position + Vec2(-1, 0));
-        neighbourPositions.push_back(position + Vec2(1, 0));
-
-        std::vector<Node*> neighbours;
-        for (auto pos : neighbourPositions) {
-            if (IsWithinBounds(pos))
-                neighbours.push_back(GetNodeAt(pos));
-        }
-
-        return neighbours;
-    }
-
-    bool IsWithinBounds(const Vec2& position) {
+    bool IsWithinBounds(const Vec2& position) const {
         return position.x >= 0 && position.x < width && position.y >= 0 && position.y < height;
     }
 
-    long Cost(Node* from, Node* to) {
-        return to->value;
-    }
-
-    void PrintGrid() {
+    void PrintGrid() const {
         std::cout << "---Grid---\n";
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                auto node = GetNodeAt(Vec2(x, y));
-                std::cout << std::to_string(node->value);
+                auto value = Get(Vec2(x, y));
+                std::cout << std::to_string(value);
             }
             std::cout << "\n";
         }
-        std::cout << "----------";
+        std::cout << "----------\n";
     }
 };
 
-std::deque<Node*> FindPath(Vec2 start, Vec2 end, Grid& grid) {
+std::vector<Vec2> GetPossibleNextDirections(const Vec2& currentDirection) {
+    if (currentDirection == NORTH)
+        return { WEST, NORTH, EAST };
+
+    if (currentDirection == EAST)
+        return { NORTH, EAST, SOUTH };
+
+    if (currentDirection == SOUTH)
+        return { EAST, SOUTH, WEST };
+
+    if (currentDirection == WEST)
+        return { SOUTH,WEST,NORTH };
+
+    return { NORTH, EAST, SOUTH, WEST };
+}
+
+std::vector<Vec2> GetValidNeighboursPositions(const Node* node, const Grid<int>& grid) {
+
+    // Since the crucible can't turn around, we eliminate "backwards" direction
+    Vec2 currentDirection = Vec2(0, 0);
+    if (node->previousNode)
+        currentDirection = node->position - node->previousNode->position;
+    
+    std::vector<Vec2> possibleDirections = GetPossibleNextDirections(currentDirection);  
+    std::vector<Vec2> nonBackwardNeighbours;
+    for (auto possibleDirection : possibleDirections)
+        nonBackwardNeighbours.push_back(possibleDirection + node->position);
+    
+    // Eliminate positions that are outside grid bounds    
+    std::vector<Vec2> inBoundsNeighbours;
+    std::copy_if(nonBackwardNeighbours.begin(), nonBackwardNeighbours.end(), std::back_inserter(inBoundsNeighbours), [&grid](Vec2 position) {
+        return grid.IsWithinBounds(position);
+        });
+    
+    return inBoundsNeighbours;
+}
+
+std::vector<Node*> FindEndNodes(const Vec2 & startPosition, const Vec2 & endPosition, const Grid<int>&grid) {
+    
     auto nodeValueComparison = [](const Node* lhs, const Node* rhs) {
-        return lhs->priority > rhs->priority;
-        };
-    auto frontier = std::priority_queue<Node*,std::vector<Node*>,decltype(nodeValueComparison)>(nodeValueComparison);
-    auto startNode = grid.GetNodeAt(start);
+        return lhs->costSoFar > rhs->costSoFar;
+        };    
+    auto frontier = std::priority_queue<Node*, std::deque<Node*>, decltype(nodeValueComparison)>();
+    Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
     frontier.push(startNode);
+       
+    long cumulativeHeatLoss = LONG_MAX;    
+    std::vector<Node*> endNodes{};
 
-    auto cameFromMap = std::map<Node*, Node*>();
-    std::map<Node*, long> costSoFarMap{};
-    costSoFarMap[startNode] = 0;
-    int consecutiveCount = 0;
-    Vec2 currentDirection = Vec2(0, 0); 
+    std::set<long long> visited{};   
     while (!frontier.empty()) {
-        Node* current = frontier.top();
+        Node* frontierNode = frontier.top();
         frontier.pop();
+        visited.insert(frontierNode->Hash());
 
-        auto neighbours = grid.GetNodeNeighbours(current);      
-        for (auto neighbour : neighbours) {
-            int newCost = costSoFarMap[current] + grid.Cost(current, neighbour);
-            costSoFarMap[neighbour] = newCost;
-            if (!cameFromMap.contains(neighbour)) {
-                neighbour->priority = newCost;
-                frontier.push(neighbour);
-                cameFromMap[neighbour] = current;
-            }
+        if (frontierNode->position == endPosition) {
+            endNodes.push_back(frontierNode);
+            continue;
+        }
+
+        auto neighbourPositions = GetValidNeighboursPositions(frontierNode, grid);
+        for (auto neighbourPosition : neighbourPositions) {
+            int steps = frontierNode->steps + 1;
+
+            if (frontierNode->previousNode) {                
+                Vec2 previousStepDirection = frontierNode->position - frontierNode->previousNode->position;
+                Vec2 currentStepDirection = neighbourPosition - frontierNode->position;
+                if (currentStepDirection != previousStepDirection)
+                    steps = 1;
+            }            
+
+            // Candidate neighbourNode
+            Node* neighbourNode = new Node(neighbourPosition, frontierNode, steps, frontierNode->costSoFar + grid.Get(neighbourPosition));
+
+            // Can't walk more than three steps in the same direction
+            if (frontierNode->steps > 3)
+                continue;
+
+            long long neighbourNodeHash = neighbourNode->Hash();            
+            if (!visited.contains(neighbourNodeHash))
+                frontier.push(neighbourNode);                              
         }
     }
-
-    // Walk backwards from end to start via cameFromMap
-    std::deque<Node*> path;
-    auto endNode = grid.GetNodeAt(end);
-    auto previous = endNode;
-    path.push_front(previous);
-    while (previous->position != startNode->position && cameFromMap.contains(previous)) {
-        previous = cameFromMap[previous];
-        path.push_front(previous);
-    }
-
-    return path;
+    
+    return endNodes;
 };
 
-char GetArrowFor(Vec2& direction) {
+char GetArrowFor(const Vec2& direction) {
     if (direction == Vec2(1, 0))
         return '>';
 
@@ -158,13 +206,26 @@ char GetArrowFor(Vec2& direction) {
     throw "Unexpected delta ? ";
 }
 
-void PrintPathOnGrid(std::deque<Node*> path, Grid& grid) {
+std::deque<Node*> GeneratePathFromEndNode(const Node* startNode, Node* endNode) {
+    // Walk backwards from end to start via cameFromMap
+    std::deque<Node*> path;
+    Node* previous = endNode;
+    while (previous && previous->position != startNode->position) {
+        path.push_front(previous);
+        if (previous->previousNode)
+            previous = previous->previousNode;
+    }
+
+    return path;
+}
+
+void PrintPathOnGrid(const std::deque<Node*>& path, const Grid<int>& grid) {
 
     std::cout << "---PathGrid---\n";
     for (int y = 0; y < grid.height; y++) {
         for (int x = 0; x < grid.width; x++) {
             Vec2 currentPos = Vec2(x, y);
-            auto node = grid.GetNodeAt(currentPos);
+            auto value = grid.Get(currentPos);
             bool onPath = false;
             for (int n = 0; n < path.size() - 1; n++) {
                 auto pathNode = path[n];
@@ -179,7 +240,7 @@ void PrintPathOnGrid(std::deque<Node*> path, Grid& grid) {
             }
 
             if (!onPath)
-                std::cout << std::to_string(node->value);
+                std::cout << std::to_string(value);
         }
         std::cout << "\n";
     }
@@ -189,7 +250,7 @@ void PrintPathOnGrid(std::deque<Node*> path, Grid& grid) {
 }
 
 int main()
-{
+{   
     std::cout << "Advent of Code - Day 16!\n";
 
     std::ifstream ifs("test_input.txt");
@@ -200,12 +261,21 @@ int main()
         parsedLines.push_back(parsedLine);
     }
 
-    Grid grid(parsedLines);
+    Grid<int> grid(parsedLines);
     grid.PrintGrid();
 
-    auto path = FindPath(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), grid);
+    long cumulativeHeatLoss = LONG_MAX;
+    Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
+    auto endNodes = FindEndNodes(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), grid);
+    for (auto endNode : endNodes) {
+        auto path = GeneratePathFromEndNode(startNode, endNode);
+        PrintPathOnGrid(path, grid);
+        if (endNode->costSoFar < cumulativeHeatLoss)
+            cumulativeHeatLoss = endNode->costSoFar;
+    }
 
-    PrintPathOnGrid(path, grid);
+    std::cout << "ANSWER PART 1 - Cumulative heat loss: " << cumulativeHeatLoss << "\n";
+    //std::cout << "ANSWER PART 1 - Cumulative heat loss: " << path << "\n";
 
     return 0;
 }
