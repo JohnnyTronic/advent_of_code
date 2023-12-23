@@ -56,11 +56,7 @@ Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, int minS
                 if (currentStepDirection != previousStepDirection)
                     steps = 1;
             }            
-
-            // Can't walk more than three steps in the same direction
-            if (steps > 3)
-                continue;
-            
+                        
             // Candidate neighbourNode
             Node* neighbourNode = new Node(neighbourPosition, frontierNode, steps, frontierNode->costSoFar + grid.Get(neighbourPosition));
             frontier.push(neighbourNode); 
@@ -142,7 +138,7 @@ int main()
      
     std::cout << "Advent of Code - Day 16!\n";
 
-    std::ifstream ifs("input.txt");
+    std::ifstream ifs("test_input.txt");
     std::string parsedLine;
     std::vector<std::string> parsedLines;
     while (ifs.good()) {
@@ -154,7 +150,7 @@ int main()
     grid.PrintGrid();
         
     Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
-    Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), 1, 3, grid);
+    Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), 4, 10, grid);
     auto path = GeneratePathFromEndNode(startNode, endNode);
     PrintPathOnGrid(path, grid);
    
@@ -171,5 +167,7 @@ int main()
     // 
     // LEARNING - Part A solution is 817 based on code from: https://github.com/coolguy1842/adventofcode/blob/master/2023/src/include/days/Day17/Day17.hpp
     // Now to figure out what's wrong with MY code...
+
+    // Part 2 - Candidate answer 925
     return 0;
 }
