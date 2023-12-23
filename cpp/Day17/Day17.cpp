@@ -1,6 +1,8 @@
 #include "Vec2.h"
 #include "Node.h"
 #include "Grid.h"
+#include "NodeCostCompare.h"
+#include "Tests.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -11,62 +13,13 @@
 #include <queue>
 #include <limits>
 
-
-
-std::vector<Vec2> GetPossibleNextDirections(const Vec2& currentDirection) {
-    if (currentDirection == NORTH)
-        return { WEST, NORTH, EAST };
-
-    if (currentDirection == EAST)
-        return { NORTH, EAST, SOUTH };
-
-    if (currentDirection == SOUTH)
-        return { EAST, SOUTH, WEST };
-
-    if (currentDirection == WEST)
-        return { SOUTH,WEST,NORTH };
-
-    return { NORTH, EAST, SOUTH, WEST };
-}
-
-std::vector<Vec2> GetValidNeighboursPositions(const Node* node, const Grid<int>& grid) {
-
-    // Since the crucible can't turn around, we eliminate "backwards" direction
-    Vec2 currentDirection = Vec2(0, 0);
-    if (node->previousNode)
-        currentDirection = node->position - node->previousNode->position;
+Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, const Grid<int>&grid) {          
     
-    std::vector<Vec2> possibleDirections = GetPossibleNextDirections(currentDirection);  
-    std::vector<Vec2> nonBackwardNeighbours;
-    for (auto possibleDirection : possibleDirections)
-        nonBackwardNeighbours.push_back(possibleDirection + node->position);
-    
-    // Eliminate positions that are outside grid bounds    
-    std::vector<Vec2> inBoundsNeighbours;
-    std::copy_if(nonBackwardNeighbours.begin(), nonBackwardNeighbours.end(), std::back_inserter(inBoundsNeighbours), [&grid](Vec2 position) {
-        return grid.IsWithinBounds(position);
-        });
-    
-    return inBoundsNeighbours;
-}
-
-struct NodeCostCompare {
-    bool operator()(const Node* a, const Node* b) {
-        return a->costSoFar < b->costSoFar;
-    }
-};
-
-Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, const Grid<int>&grid) {
-    
-    auto nodeValueComparison = [](const Node* lhs, const Node* rhs) -> bool {
-        return lhs->costSoFar > rhs->costSoFar;
-        };    
-    //auto frontier = std::priority_queue<Node*, std::deque<Node*>, decltype(nodeValueComparison)>();
     auto frontier = std::priority_queue<Node*, std::vector<Node*>, NodeCostCompare>();
     Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
     frontier.push(startNode);
    
-    std::set<std::string> visited{};   
+    std::set<long long> visited{};   
     while (!frontier.empty()) {
         Node* frontierNode = frontier.top();
         frontier.pop();
@@ -74,24 +27,21 @@ Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, const Gr
         auto frontierNodeHash = frontierNode->Hash();
         if (visited.contains(frontierNodeHash))
             continue;
+        visited.insert(frontierNodeHash);
 
-        if (frontierNode->position == endPosition) {
-            //endNodes.push_back(frontierNode);
-
-            Node* popper = frontier.top();
-            long latestPop = popper->costSoFar;
+        if (frontierNode->position == endPosition) {   
+            Node* frontierTop = frontier.top();
+            long topCost = frontierTop->costSoFar;
             while (!frontier.empty()) {
-                Node* nextPopper = frontier.top();
+                Node* nextFrontierTop = frontier.top();
                 frontier.pop();
-                if (nextPopper->costSoFar > popper->costSoFar)
-                    throw "Priority queue not working...?";
-                popper = nextPopper;
+                assert(topCost <= nextFrontierTop->costSoFar && "Priority Queue not working...?");
+                   
+                frontierTop = nextFrontierTop;
             }
             return frontierNode;
             //continue;
-        }
-                
-        visited.insert(frontierNodeHash);
+        }               
 
         auto neighbourPositions = GetValidNeighboursPositions(frontierNode, grid);
         for (auto neighbourPosition : neighbourPositions) {
@@ -178,9 +128,17 @@ void PrintPathOnGrid(const std::deque<Node*>& path, const Grid<int>& grid) {
 
 int main()
 {   
+    TestPriorityQueue();
+    TestNodeHashing();
+    TestGetPossibleNextDirections();
+    TestGetValidNeighbourPositions();
+    return 0;
+
+    std::cout << "Size of int: " << sizeof(int) << "\n";
+ 
     std::cout << "Advent of Code - Day 16!\n";
 
-    std::ifstream ifs("test_input.txt");
+    std::ifstream ifs("input.txt");
     std::string parsedLine;
     std::vector<std::string> parsedLines;
     while (ifs.good()) {
@@ -202,6 +160,6 @@ int main()
 
     std::cout << "ANSWER PART 1 - Cumulative heat loss: " << endNode->costSoFar << "\n";
     //std::cout << "ANSWER PART 1 - Cumulative heat loss: " << path << "\n";
-    // Wrongs answers: 829, 830, 921
+    // Wrongs answers: 821, 829, 830, 921, 1034
     return 0;
 }

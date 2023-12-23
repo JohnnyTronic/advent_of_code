@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 class Vec2 {
 public:
     int x{};
@@ -30,3 +32,19 @@ const Vec2 NORTH = Vec2(0, -1);
 const Vec2 SOUTH = Vec2(0, 1);
 const Vec2 EAST = Vec2(1, 0);
 const Vec2 WEST = Vec2(-1, 0);
+
+std::vector<Vec2> GetPossibleNextDirections(const Vec2& currentDirection) {
+    if (currentDirection == NORTH)
+        return { WEST, NORTH, EAST };
+
+    if (currentDirection == EAST)
+        return { NORTH, EAST, SOUTH };
+
+    if (currentDirection == SOUTH)
+        return { EAST, SOUTH, WEST };
+
+    if (currentDirection == WEST)
+        return { SOUTH,WEST,NORTH };
+
+    return { NORTH, EAST, SOUTH, WEST };
+}

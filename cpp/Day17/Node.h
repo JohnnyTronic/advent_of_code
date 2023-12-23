@@ -17,7 +17,7 @@ public:
     bool operator==(const Node& other) const { return position == other.position && &previousNode == &other.previousNode && steps == other.steps && costSoFar == other.costSoFar; }
     bool operator<(const Node& other) const { return costSoFar < other.costSoFar; }
 
-    std::string Hash() {
+    long long Hash() {
         Vec2 direction(0, 0);
         if (previousNode)
             direction = Vec2(previousNode->position.x - position.x, previousNode->position.y - position.y);
@@ -26,11 +26,7 @@ public:
         if (direction == SOUTH) directionInt = 2;
         if (direction == EAST) directionInt = 3;
         if (direction == WEST) directionInt = 4;
-
-        //std::string stringHash = std::to_string(position.x) + std::to_string(position.y) + std::to_string(steps) + std::to_string(costSoFar);
-        std::string stringHash = std::to_string(directionInt) + std::to_string(steps) + std::to_string(position.x) + std::to_string(position.y);
-        std::stringstream ss;
-        ss << std::setfill('0') << std::setw(10) << stringHash;
-        return ss.str();
+        
+        return directionInt + (steps << 4) + (position.x << 8) + (position.y << 12) + (costSoFar << 16);       
     }
 };
