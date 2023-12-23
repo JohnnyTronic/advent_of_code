@@ -1,3 +1,6 @@
+#include "Vec2.h"
+#include "Node.h"
+#include "Grid.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -8,100 +11,7 @@
 #include <queue>
 #include <limits>
 
-class Vec2 {
-public:
-    int x{};
-    int y{};
-    Vec2();
-    Vec2(int x, int y) : x(x), y(y) {}
 
-    //bool operator<(const Vec2& other) const { return x < other.x && y < other.y; };
-};
-
-static Vec2 operator+(const Vec2& lhs, const Vec2& rhs) {
-    return Vec2(lhs.x + rhs.x, lhs.y + rhs.y);
-}
-
-static Vec2 operator-(Vec2 lhs, Vec2 rhs) {
-    return Vec2(lhs.x - rhs.x, lhs.y - rhs.y);
-}
-
-static bool operator==(const Vec2& lhs, const Vec2& rhs) {
-    return lhs.x == rhs.x && lhs.y == rhs.y;
-}
-
-static bool operator!=(const Vec2& lhs, const Vec2& rhs) {
-    return lhs.x != rhs.x || lhs.y != rhs.y;
-}
-
-const Vec2 NORTH = Vec2(0, -1);
-const Vec2 SOUTH = Vec2(0, 1);
-const Vec2 EAST = Vec2(1, 0);
-const Vec2 WEST = Vec2(-1, 0);
-
-struct Node {
-public:
-    Vec2 position{};
-    //Vec2 previousPosition;
-    Node* previousNode;
-    int steps = 0;
-    long costSoFar{};
-   
-    Node(Vec2 position, Node* previousNode, int steps, long costSoFar) : position(position), previousNode(previousNode), steps(steps), costSoFar(costSoFar) {}
-
-    bool operator==(const Node& other) const { return position == other.position && &previousNode == &other.previousNode && steps == other.steps && costSoFar == other.costSoFar; }
-    bool operator<(const Node& other) const { return costSoFar < other.costSoFar; }    
-
-    long long Hash() {
-        long hash = (position.x) + (position.y << 4);
-        //if (previousNode)
-          //  hash += (previousNode->position.x << 12) + (previousNode->position.y << 16);
-       
-        return hash;
-    }
-};
-
-
-template <typename T>
-class Grid {
-public:
-    std::vector<std::vector<int>> content;
-    int width;
-    int height;
-
-    Grid(const std::vector<std::string>& input) {
-        width = input[0].size();
-        height = input.size();
-        for (int y = 0; y < height; y++) {
-            std::vector<int> row;
-            for (int x = 0; x < width; x++) {
-                int value = input[y][x] - '0';
-                row.push_back(value);
-            }
-            content.push_back(row);
-        }
-    } 
-
-    T Get(Vec2 position) const {
-        return content[position.y][position.x];
-    }
-
-    bool IsWithinBounds(const Vec2& position) const {
-        return position.x >= 0 && position.x < width && position.y >= 0 && position.y < height;
-    }
-
-    void PrintGrid() const {
-        std::cout << "---Grid---\n";
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                auto value = Get(Vec2(x, y));
-                std::cout << std::to_string(value);
-            }
-            std::cout << "\n";
-        }
-        std::cout << "----------\n";
-    }
-};
 
 std::vector<Vec2> GetPossibleNextDirections(const Vec2& currentDirection) {
     if (currentDirection == NORTH)
@@ -140,28 +50,48 @@ std::vector<Vec2> GetValidNeighboursPositions(const Node* node, const Grid<int>&
     return inBoundsNeighbours;
 }
 
-std::vector<Node*> FindEndNodes(const Vec2 & startPosition, const Vec2 & endPosition, const Grid<int>&grid) {
+struct NodeCostCompare {
+    bool operator()(const Node* a, const Node* b) {
+        return a->costSoFar < b->costSoFar;
+    }
+};
+
+Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, const Grid<int>&grid) {
     
-    auto nodeValueComparison = [](const Node* lhs, const Node* rhs) {
+    auto nodeValueComparison = [](const Node* lhs, const Node* rhs) -> bool {
         return lhs->costSoFar > rhs->costSoFar;
         };    
-    auto frontier = std::priority_queue<Node*, std::deque<Node*>, decltype(nodeValueComparison)>();
+    //auto frontier = std::priority_queue<Node*, std::deque<Node*>, decltype(nodeValueComparison)>();
+    auto frontier = std::priority_queue<Node*, std::vector<Node*>, NodeCostCompare>();
     Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
     frontier.push(startNode);
-       
-    long cumulativeHeatLoss = LONG_MAX;    
-    std::vector<Node*> endNodes{};
-
-    std::set<long long> visited{};   
+   
+    std::set<std::string> visited{};   
     while (!frontier.empty()) {
         Node* frontierNode = frontier.top();
         frontier.pop();
-        visited.insert(frontierNode->Hash());
+
+        auto frontierNodeHash = frontierNode->Hash();
+        if (visited.contains(frontierNodeHash))
+            continue;
 
         if (frontierNode->position == endPosition) {
-            endNodes.push_back(frontierNode);
-            continue;
+            //endNodes.push_back(frontierNode);
+
+            Node* popper = frontier.top();
+            long latestPop = popper->costSoFar;
+            while (!frontier.empty()) {
+                Node* nextPopper = frontier.top();
+                frontier.pop();
+                if (nextPopper->costSoFar > popper->costSoFar)
+                    throw "Priority queue not working...?";
+                popper = nextPopper;
+            }
+            return frontierNode;
+            //continue;
         }
+                
+        visited.insert(frontierNodeHash);
 
         auto neighbourPositions = GetValidNeighboursPositions(frontierNode, grid);
         for (auto neighbourPosition : neighbourPositions) {
@@ -174,20 +104,17 @@ std::vector<Node*> FindEndNodes(const Vec2 & startPosition, const Vec2 & endPosi
                     steps = 1;
             }            
 
+            // Can't walk more than three steps in the same direction
+            if (steps > 3)
+                continue;
+            
             // Candidate neighbourNode
             Node* neighbourNode = new Node(neighbourPosition, frontierNode, steps, frontierNode->costSoFar + grid.Get(neighbourPosition));
-
-            // Can't walk more than three steps in the same direction
-            if (frontierNode->steps > 3)
-                continue;
-
-            long long neighbourNodeHash = neighbourNode->Hash();            
-            if (!visited.contains(neighbourNodeHash))
-                frontier.push(neighbourNode);                              
+            frontier.push(neighbourNode); 
         }
     }
     
-    return endNodes;
+    throw "Should have found EndNode before this.";
 };
 
 char GetArrowFor(const Vec2& direction) {
@@ -263,19 +190,18 @@ int main()
 
     Grid<int> grid(parsedLines);
     grid.PrintGrid();
-
-    long cumulativeHeatLoss = LONG_MAX;
+        
     Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
-    auto endNodes = FindEndNodes(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), grid);
-    for (auto endNode : endNodes) {
+    Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), grid);
+    /*for (auto endNode : endNodes) {
         auto path = GeneratePathFromEndNode(startNode, endNode);
         PrintPathOnGrid(path, grid);
         if (endNode->costSoFar < cumulativeHeatLoss)
             cumulativeHeatLoss = endNode->costSoFar;
-    }
+    }*/
 
-    std::cout << "ANSWER PART 1 - Cumulative heat loss: " << cumulativeHeatLoss << "\n";
+    std::cout << "ANSWER PART 1 - Cumulative heat loss: " << endNode->costSoFar << "\n";
     //std::cout << "ANSWER PART 1 - Cumulative heat loss: " << path << "\n";
-
+    // Wrongs answers: 829, 830, 921
     return 0;
 }

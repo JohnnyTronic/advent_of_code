@@ -135,6 +135,11 @@
     <Text Include="input.txt" />
     <Text Include="test_input.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Grid.h" />
+    <ClInclude Include="Node.h" />
+    <ClInclude Include="Vec2.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
