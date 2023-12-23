@@ -64,6 +64,16 @@ void TestNodeHashing() {
     std::cout << "Test Node Hashing: SUCCESS\n";
 }
 
+//void TestVisitedSet() {
+//    for (int y = 0; y < 141; y++) {
+//        for (int x = 0; x < 141; x++) {
+//            Node* north = new Node(Vec2(x + 0, y - 1), nullptr, 0, 0);
+//
+//            Node* center = new Node(Vec2())
+//        }
+//    }
+//}
+
 bool TestDirectionsHelper(Vec2 given, Vec2 expectedA, Vec2 expectedB, Vec2 expectedC) {
     auto results = GetPossibleNextDirections(given);
     assert(results.size() == 3);
@@ -87,11 +97,13 @@ void AssertXInY(Vec2 expected, std::vector<Vec2> container) {
 }
 
 void TestGetValidNeighbourPositions() {
+    int minSteps = 0;
+    int maxSteps = 3;
     std::vector<std::string> input{ "1234","1234","1234", "1234" };
-    Grid<int> grid(input);
+    Grid<std::size_t> grid(input);
     {
         Node* nodeA = new Node(Vec2(0, 0), nullptr, 0, 0);
-        auto result = GetValidNeighboursPositions(nodeA, grid);
+        auto result = GetValidNeighboursPositions(nodeA, minSteps, maxSteps, grid);
         assert(result.size() == 2);
         assert(std::find(result.begin(), result.end(), Vec2(1, 0)) != result.end());
         assert(std::find(result.begin(), result.end(), Vec2(0, 1)) != result.end());
@@ -99,7 +111,7 @@ void TestGetValidNeighbourPositions() {
 
     {
         Node* nodeB = new Node(Vec2(1, 1), nullptr, 0, 0);
-        auto result = GetValidNeighboursPositions(nodeB, grid);
+        auto result = GetValidNeighboursPositions(nodeB, minSteps, maxSteps, grid);
         assert(result.size() == 4);
         AssertXInY(Vec2(1, 0), result);
         AssertXInY(Vec2(0, 1), result);
@@ -109,7 +121,7 @@ void TestGetValidNeighbourPositions() {
     {
         Node* nodeC = new Node(Vec2(0, 1), nullptr, 0, 0);
         Node* nodeD = new Node(Vec2(1, 1), nodeC, 1, 10);
-        auto result = GetValidNeighboursPositions(nodeD, grid);
+        auto result = GetValidNeighboursPositions(nodeD, minSteps, maxSteps, grid);
         assert(result.size() == 3);
         AssertXInY(Vec2(2, 1), result);
         AssertXInY(Vec2(1, 0), result);
@@ -119,7 +131,7 @@ void TestGetValidNeighbourPositions() {
         // Steps=3 prevent further forward movement
         Node* nodeE = new Node(Vec2(0, 1), nullptr, 0, 0);
         Node* nodeF = new Node(Vec2(1, 1), nodeE, 3, 0);
-        auto result = GetValidNeighboursPositions(nodeF, grid);
+        auto result = GetValidNeighboursPositions(nodeF, minSteps, maxSteps, grid);
         assert(result.size() == 2);
         AssertXInY(Vec2(1, 0), result);
         AssertXInY(Vec2(1, 2), result);
@@ -128,7 +140,7 @@ void TestGetValidNeighbourPositions() {
         // Steps=2 does NOT prevent further forward movement
         Node* nodeG = new Node(Vec2(0, 1), nullptr, 0, 0);
         Node* nodeH = new Node(Vec2(1, 1), nodeG, 2, 0);
-        auto result = GetValidNeighboursPositions(nodeH, grid);
+        auto result = GetValidNeighboursPositions(nodeH, minSteps, maxSteps, grid);
         assert(result.size() == 3);
         AssertXInY(Vec2(1, 0), result);
         AssertXInY(Vec2(1, 2), result);
@@ -136,7 +148,7 @@ void TestGetValidNeighbourPositions() {
     }
     {
         Node* nodeI = new Node(Vec2(3, 3), nullptr, 0, 0);
-        auto result = GetValidNeighboursPositions(nodeI, grid);
+        auto result = GetValidNeighboursPositions(nodeI, minSteps, maxSteps, grid);
         assert(result.size() == 2);
     }
 

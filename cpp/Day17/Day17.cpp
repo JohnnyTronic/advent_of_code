@@ -9,17 +9,20 @@
 #include <vector>
 #include <regex>
 #include <set>
+#include <unordered_set>
 #include <map>
 #include <queue>
 #include <limits>
 
-Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, const Grid<int>&grid) {          
+
+Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, int minSteps, int maxSteps, const Grid<std::size_t>&grid) {          
     
     auto frontier = std::priority_queue<Node*, std::vector<Node*>, NodeCostCompare>();
     Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
     frontier.push(startNode);
    
-    std::set<long long> visited{};   
+    std::unordered_set<std::size_t> visited{};   
+    //std::set<std::size_t> visited{};   
     while (!frontier.empty()) {
         Node* frontierNode = frontier.top();
         frontier.pop();
@@ -43,7 +46,7 @@ Node* FindEndNode(const Vec2 & startPosition, const Vec2 & endPosition, const Gr
             //continue;
         }               
 
-        auto neighbourPositions = GetValidNeighboursPositions(frontierNode, grid);
+        auto neighbourPositions = GetValidNeighboursPositions(frontierNode, minSteps, maxSteps, grid);
         for (auto neighbourPosition : neighbourPositions) {
             int steps = frontierNode->steps + 1;
 
@@ -96,15 +99,15 @@ std::deque<Node*> GeneratePathFromEndNode(const Node* startNode, Node* endNode) 
     return path;
 }
 
-void PrintPathOnGrid(const std::deque<Node*>& path, const Grid<int>& grid) {
+void PrintPathOnGrid(const std::deque<Node*>& path, const Grid<std::size_t>& grid) {
 
     std::cout << "---PathGrid---\n";
-    for (int y = 0; y < grid.height; y++) {
-        for (int x = 0; x < grid.width; x++) {
+    for (std::size_t y = 0; y < grid.height; y++) {
+        for (std::size_t x = 0; x < grid.width; x++) {
             Vec2 currentPos = Vec2(x, y);
             auto value = grid.Get(currentPos);
             bool onPath = false;
-            for (int n = 0; n < path.size() - 1; n++) {
+            for (std::size_t n = 0; n < path.size() - 1; n++) {
                 auto pathNode = path[n];
                 if (pathNode->position == currentPos) {
                     onPath = true;
@@ -128,14 +131,15 @@ void PrintPathOnGrid(const std::deque<Node*>& path, const Grid<int>& grid) {
 
 int main()
 {   
-    TestPriorityQueue();
-    TestNodeHashing();
-    TestGetPossibleNextDirections();
-    TestGetValidNeighbourPositions();
-    return 0;
-
-    std::cout << "Size of int: " << sizeof(int) << "\n";
- 
+    //std::cout << "Size of size_t: " << sizeof(std::size_t) << "\n";
+    if (false) {
+        std::cout << "Size of int: " << sizeof(int) << "\n";
+        TestPriorityQueue();
+        TestNodeHashing();
+        TestGetPossibleNextDirections();
+        TestGetValidNeighbourPositions();   
+    }
+     
     std::cout << "Advent of Code - Day 16!\n";
 
     std::ifstream ifs("input.txt");
@@ -146,11 +150,14 @@ int main()
         parsedLines.push_back(parsedLine);
     }
 
-    Grid<int> grid(parsedLines);
+    Grid<std::size_t> grid(parsedLines);
     grid.PrintGrid();
         
     Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
-    Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), grid);
+    Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), 1, 3, grid);
+    auto path = GeneratePathFromEndNode(startNode, endNode);
+    PrintPathOnGrid(path, grid);
+   
     /*for (auto endNode : endNodes) {
         auto path = GeneratePathFromEndNode(startNode, endNode);
         PrintPathOnGrid(path, grid);
@@ -161,5 +168,8 @@ int main()
     std::cout << "ANSWER PART 1 - Cumulative heat loss: " << endNode->costSoFar << "\n";
     //std::cout << "ANSWER PART 1 - Cumulative heat loss: " << path << "\n";
     // Wrongs answers: 821, 829, 830, 921, 1034
+    // 
+    // LEARNING - Part A solution is 817 based on code from: https://github.com/coolguy1842/adventofcode/blob/master/2023/src/include/days/Day17/Day17.hpp
+    // Now to figure out what's wrong with MY code...
     return 0;
 }

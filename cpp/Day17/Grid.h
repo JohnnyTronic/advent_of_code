@@ -8,17 +8,17 @@
 template <typename T>
 class Grid {
 public:
-    std::vector<std::vector<int>> content;
-    int width;
-    int height;
+    std::vector<std::vector<std::size_t>> content;
+    std::size_t width;
+    std::size_t height;
 
     Grid(const std::vector<std::string>& input) {
         width = input[0].size();
         height = input.size();
-        for (int y = 0; y < height; y++) {
-            std::vector<int> row;
-            for (int x = 0; x < width; x++) {
-                int value = input[y][x] - '0';
+        for (std::size_t y = 0; y < height; y++) {
+            std::vector<std::size_t> row;
+            for (std::size_t x = 0; x < width; x++) {
+                std::size_t value = input[y][x] - '0';
                 row.push_back(value);
             }
             content.push_back(row);
@@ -35,8 +35,8 @@ public:
 
     void PrintGrid() const {
         std::cout << "---Grid---\n";
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
+        for (std::size_t y = 0; y < height; y++) {
+            for (std::size_t x = 0; x < width; x++) {
                 auto value = Get(Vec2(x, y));
                 std::cout << std::to_string(value);
             }
@@ -46,37 +46,47 @@ public:
     }
 };
 
-std::vector<Vec2> GetValidNeighboursPositions(const Node* node, const Grid<int>& grid) {
-
+std::vector<Vec2> GetValidNeighboursPositions(const Node* node, int minSteps, int maxSteps, const Grid<size_t>& grid) {
+        
     // Since the crucible can't turn around, we eliminate "backwards" direction
     Vec2 currentDirection = Vec2(0, 0);
     if (node->previousNode)
         currentDirection = node->position - node->previousNode->position;
+
     std::vector<Vec2> possibleDirections = GetPossibleNextDirections(currentDirection);
-    std::vector<Vec2> nonBackwardNeighbours;
+    std::vector<Vec2> possibleNeighbours;
+    possibleNeighbours.reserve(possibleDirections.size());
     for (auto possibleDirection : possibleDirections)
-        nonBackwardNeighbours.push_back(possibleDirection + node->position);
+        possibleNeighbours.push_back(possibleDirection + node->position);
 
-    // Eliminate positions that are outside grid bounds    
-    std::vector<Vec2> inBoundsNeighbours;
-    std::copy_if(nonBackwardNeighbours.begin(), nonBackwardNeighbours.end(), std::back_inserter(inBoundsNeighbours), [&grid](Vec2 position) {
-        return grid.IsWithinBounds(position);
-        });
+    // Eliminate positions that are outside grid bounds        
+    possibleNeighbours.erase(
+        std::remove_if(possibleNeighbours.begin(), possibleNeighbours.end(), [&grid](Vec2 position) {
+        return !grid.IsWithinBounds(position);
+        }), possibleNeighbours.end());
 
-    // Cannot travel 4 steps in the same direction
-    if (node->steps >= 3) {
-        std::vector<Vec2> stepLimitedNeighbours;
-        std::copy_if(inBoundsNeighbours.begin(), inBoundsNeighbours.end(), std::back_inserter(stepLimitedNeighbours), [&grid, &node](Vec2 position) {
+    // Must travel at least minSteps in the same direction
+    if (node->steps > 0 && node->steps < minSteps) {
+        possibleNeighbours.erase(
+            std::remove_if(possibleNeighbours.begin(), possibleNeighbours.end(), [&node, &currentDirection](Vec2 position) {
+            Vec2 nextDirection = position - node->position;
+            return nextDirection != currentDirection;
+            }), possibleNeighbours.end());        
+    }
+
+    // Cannot travel more than maxSteps in the same direction
+    if (node->steps >= maxSteps) {        
+        possibleNeighbours.erase(
+            std::remove_if(possibleNeighbours.begin(), possibleNeighbours.end(), [&grid, &node](Vec2 position) {
             if (node->previousNode) {
                 Vec2 prevDirection = node->position - node->previousNode->position;
                 Vec2 nextDirection = position - node->position;
-                return nextDirection != prevDirection;
+                return nextDirection == prevDirection;
             }
             else
-                return true;
-            });         
-        return stepLimitedNeighbours;
+                return false;
+            }), possibleNeighbours.end());         
     }
 
-    return inBoundsNeighbours;
+    return possibleNeighbours;
 }

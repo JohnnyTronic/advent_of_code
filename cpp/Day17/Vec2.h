@@ -5,8 +5,8 @@
 class Vec2 {
 public:
     int x{};
-    int y{};
-    Vec2();
+    int y{};    
+    Vec2() {};
     Vec2(int x, int y) : x(x), y(y) {}
 
     //bool operator<(const Vec2& other) const { return x < other.x && y < other.y; };
@@ -41,10 +41,10 @@ std::vector<Vec2> GetPossibleNextDirections(const Vec2& currentDirection) {
         return { NORTH, EAST, SOUTH };
 
     if (currentDirection == SOUTH)
-        return { EAST, SOUTH, WEST };
+        return { WEST, SOUTH, EAST };
 
     if (currentDirection == WEST)
-        return { SOUTH,WEST,NORTH };
+        return { NORTH,WEST,SOUTH };
 
-    return { NORTH, EAST, SOUTH, WEST };
+    return { WEST, NORTH, EAST, SOUTH };
 }
