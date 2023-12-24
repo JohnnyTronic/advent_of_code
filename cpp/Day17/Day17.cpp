@@ -127,7 +127,6 @@ void PrintPathOnGrid(const std::deque<Node*>& path, const Grid<std::size_t>& gri
 
 int main()
 {   
-    //std::cout << "Size of size_t: " << sizeof(std::size_t) << "\n";
     if (false) {
         std::cout << "Size of int: " << sizeof(int) << "\n";
         TestPriorityQueue();
@@ -138,7 +137,7 @@ int main()
      
     std::cout << "Advent of Code - Day 16!\n";
 
-    std::ifstream ifs("test_input.txt");
+    std::ifstream ifs("input.txt");
     std::string parsedLine;
     std::vector<std::string> parsedLines;
     while (ifs.good()) {
@@ -150,23 +149,22 @@ int main()
     grid.PrintGrid();
         
     Node* startNode = new Node(Vec2(0, 0), nullptr, 0, 0);
-    Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), 4, 10, grid);
+    Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), 1, 3, grid);
     auto path = GeneratePathFromEndNode(startNode, endNode);
     PrintPathOnGrid(path, grid);
-   
-    /*for (auto endNode : endNodes) {
-        auto path = GeneratePathFromEndNode(startNode, endNode);
-        PrintPathOnGrid(path, grid);
-        if (endNode->costSoFar < cumulativeHeatLoss)
-            cumulativeHeatLoss = endNode->costSoFar;
-    }*/
-
+    
     std::cout << "ANSWER PART 1 - Cumulative heat loss: " << endNode->costSoFar << "\n";
     //std::cout << "ANSWER PART 1 - Cumulative heat loss: " << path << "\n";
     // Wrongs answers: 821, 829, 830, 921, 1034
     // 
     // LEARNING - Part A solution is 817 based on code from: https://github.com/coolguy1842/adventofcode/blob/master/2023/src/include/days/Day17/Day17.hpp
     // Now to figure out what's wrong with MY code...
+
+    // Part 2 - Ultra crucible
+    {
+        Node* endNode = FindEndNode(Vec2(0, 0), Vec2(grid.width - 1, grid.height - 1), 4, 10, grid);
+        std::cout << "ANSWER PART 2 - Cumulative heat lost for ultra crucible: " << endNode->costSoFar << "\n";
+    }
 
     // Part 2 - Candidate answer 925
     return 0;
