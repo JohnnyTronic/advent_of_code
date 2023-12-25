@@ -135,7 +135,7 @@ int main()
         TestGetValidNeighbourPositions();   
     }
      
-    std::cout << "Advent of Code - Day 16!\n";
+    std::cout << "Advent of Code - Day 17!\n";
 
     std::ifstream ifs("input.txt");
     std::string parsedLine;
