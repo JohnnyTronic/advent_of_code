@@ -14,8 +14,7 @@ public:
     int m;
     int a;
     int s;
-
-    //MachinePart(int x, int m, int a, int s) : x(x), m(m), a(a), s(s) {}
+        
     MachinePart(std::string partString) {
         // Example machine part string: {x=61,m=577,a=1750,s=1892}
         std::regex numbersPattern("=(\\d+),.*=(\\d+),.*=(\\d+),.*=(\\d+)");
@@ -40,7 +39,7 @@ public:
 
     Rule(char targetProperty, char comparison, long long value, std::string destination) : targetProperty(targetProperty), comparison(comparison), value(value), destination(destination) {}
 
-    std::string EvaluateMachinePart(MachinePart& part) {
+    std::string EvaluateMachinePart(const MachinePart& part) {
         // Does this part trigger this rule? Return "destination" if so, return " " if not
         if (comparison == ' ') {
             return destination;
@@ -130,11 +129,8 @@ enum class ParseMode {
     machinepart
 };
 
-int main()
-{
-    std::cout << "Advent of Code - Day 19!\n";
-
-    std::ifstream ifs("input.txt");
+std::tuple<std::map<std::string, Workflow>, std::vector<MachinePart>> ParseInput(const std::string& fileName) {
+    std::ifstream ifs(fileName);
     std::string parsedLine;
     std::vector<std::string> parsedWorkflowStrings;
     std::vector<std::string> parsedPartStrings;
@@ -166,34 +162,38 @@ int main()
     }
     ifs.close();
 
+    return { workflows, machineParts };
+}
+
+void DoPart1(const std::map<std::string,Workflow>& workflows, const std::vector<MachinePart>& machineParts) {
     long long totalScore = 0;
-    for (auto part : machineParts) {
-        Workflow workflow = workflows["in"];
+    for (auto part : machineParts) {        
+        Workflow workflow = workflows.find("in")->second;
         std::string destination = " ";
 
         destination = workflow.Evaluate(part);
         while (!(destination == "R" || destination == "A")) {
-            workflow = workflows[destination];
+            workflow = workflows.find(destination)->second;
             destination = workflow.Evaluate(part);
         }
 
         if (destination == "A") {
             totalScore += part.x + part.m + part.a + part.s;
-        }        
+        }
     }
 
     std::cout << "PART 1 ANSWER - Sum of all accepted part values: " << totalScore << "\n";
+}
+
+int main()
+{
+    std::cout << "Advent of Code - Day 19!\n";
+
+    auto input = ParseInput("input.txt");
+    auto workflows = std::get<0>(input);
+    auto machineParts = std::get<1>(input);
+
+    DoPart1(workflows, machineParts);    
         
     return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
