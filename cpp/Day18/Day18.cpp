@@ -45,10 +45,10 @@ Vec2 DirectionToVec2(Direction direction) {
 
 struct Extents {
 public:
-    int xMin{};
-    int xMax{};
-    int yMin{};
-    int yMax{};
+    long long xMin{};
+    long long xMax{};
+    long long yMin{};
+    long long yMax{};
 };
 
 Extents GetExtents(const std::vector<Vec2>& vertices) {
@@ -86,8 +86,8 @@ public:
 
     void Print(Extents extents) {
         std::cout << "---Grid---\n";
-        for (int y = extents.yMin; y <= extents.yMax; y++) {
-            for (int x = extents.xMin; x <= extents.xMax; x++) {
+        for (long long y = extents.yMin; y <= extents.yMax; y++) {
+            for (long long x = extents.xMin; x <= extents.xMax; x++) {
                 Cell* cell = Get(Vec2(x, y));
                 if (cell == nullptr) {
                     std::cout << ".";
@@ -131,7 +131,7 @@ Grid CutTrench(const std::vector<Instruction>& instructions) {
     for (auto& instruction : instructions) {
         Vec2 direction = DirectionToVec2(instruction.direction);
         Vec2 startPosition = currentPosition;
-        for (int i = 0; i <= instruction.distance; i++) {
+        for (long long i = 0; i <= instruction.distance; i++) {
             currentPosition = startPosition + direction * i;
             Cell* cell = grid.Get(currentPosition);
             if (cell == nullptr) {
@@ -200,12 +200,12 @@ long long FillTrenchInterior(Grid& grid, Extents& extents) {
     // At each step, scan diagonally down-right, looking for trench crossings
     // and noting "degenerate" corners 7 and L
     long long totalHollowCells = 0;
-    for (int y = extents.yMax + 1; y >= extents.yMin - 1; y--) {
+    for (long long y = extents.yMax + 1; y >= extents.yMin - 1; y--) {
         Vec2 scanStartPos(extents.xMin - 1, y);
         totalHollowCells += ScanDiagonalDownRight(scanStartPos, grid, extents);
     }
 
-    for (int x = extents.xMin; x <= extents.xMax; x++) {
+    for (long long x = extents.xMin; x <= extents.xMax; x++) {
         Vec2 scanStartPos(x, extents.yMin - 1);
         totalHollowCells += ScanDiagonalDownRight(scanStartPos, grid, extents);
     }
@@ -214,7 +214,7 @@ long long FillTrenchInterior(Grid& grid, Extents& extents) {
 }
 
 std::vector<std::string> ParseInput(const std::string& fileName) {
-    std::ifstream ifs("input.txt");
+    std::ifstream ifs(fileName);
     std::string parsedLine;
     std::vector<std::string> parsedLines;
     while (ifs.good()) {
@@ -258,14 +258,82 @@ std::vector<Vec2> ExtractVertices(const std::vector<Instruction>& instructions) 
 std::vector<Edge> ComputeEdges(const std::vector<Vec2>& vertices) {
     std::vector<Edge> edges;
 
-    for (int i = 0; i < vertices.size() - 1; i++) {
+    for (long long i = 0; i < vertices.size() - 1; i++) {
         Edge edge(vertices[i], vertices[i + 1]);
         edges.push_back(edge);
-    }
-    Edge finalEdge(vertices.back(), vertices.front());
-    edges.push_back(finalEdge);
+    }    
 
     return edges;
+}
+
+void DoPart1(const std::vector<std::string>& parsedLines) {
+    std::vector<Instruction> instructions = ExtractInstructionsPart1(parsedLines);
+    std::vector<Vec2> vertices = ExtractVertices(instructions);
+    auto extents = GetExtents(vertices);
+    std::vector<Edge> edges = ComputeEdges(vertices);
+
+    Grid grid = CutTrench(instructions);
+    //grid.Print(extents);
+
+    long long lagoonVolume = FillTrenchInterior(grid, extents);
+    //grid.Print(extents);
+
+    std::cout << "ANSWER PART 1 - What is the lagoon's volume?: " << std::to_string(lagoonVolume) << "\n";
+}
+
+void DoPart2(const std::vector<std::string>& parsedLines) {
+    // Part 2 - Swap dig commands with colors
+    std::vector<Instruction> malformedInstructions = ExtractInstructionsPart1(parsedLines);
+    std::vector<Instruction> instructions;
+    instructions.reserve(parsedLines.size());
+    for (auto& malformedInstruction : malformedInstructions) {
+        std::string hexColor = malformedInstruction.hexColor;
+        std::string distanceSubstring = hexColor.substr(2, 5);
+        char directionChar = hexColor[7];
+
+        long long distance;
+        std::stringstream ss;
+        ss << std::hex << distanceSubstring;
+        ss >> distance;
+
+        Direction direction;
+        switch (directionChar) {
+        case '0': direction = Direction::EAST; break;
+        case '1': direction = Direction::SOUTH; break;
+        case '2': direction = Direction::WEST; break;
+        case '3': direction = Direction::NORTH; break;
+        }
+
+        Instruction instruction(direction, distance, hexColor);
+        instructions.push_back(instruction);
+    }
+
+    std::vector<Vec2> vertices = ExtractVertices(instructions);
+    auto edges = ComputeEdges(vertices);
+    // Shoelace formula https://en.wikipedia.org/wiki/Shoelace_formula
+    long long lagoonVolume = 0;
+    long long perimeter = 0;
+    for (const auto& edge : edges) {
+        lagoonVolume += (edge.vertexA.x * edge.vertexB.y) - (edge.vertexB.x * edge.vertexA.y);
+
+        long long deltaX = std::abs(edge.vertexB.x - edge.vertexA.x);
+        long long deltaY = std::abs(edge.vertexB.y - edge.vertexA.y);
+        perimeter += deltaX + deltaY;
+    }
+   
+    lagoonVolume /= 2;
+    lagoonVolume += perimeter / 2;
+    lagoonVolume += 1;
+
+    auto diffToRefAnswer = 952408144115 - lagoonVolume;
+
+    //auto extents = GetExtents(vertices);
+    //Grid grid = CutTrench(instructions);
+    //long long lagoonVolume = FillTrenchInterior(grid, extents);
+
+    std::cout << "ANSWER PART 2 - Lagoon volume with corrected dig instructions: " << std::to_string(lagoonVolume) << "\n";
+    // Incorrect Answer: 3347822616 (too low)
+
 }
 
 int main()
@@ -273,19 +341,8 @@ int main()
     std::cout << "Advent of Code - Day 18!\n";
 
     auto parsedLines = ParseInput("input.txt");
-    
-    std::vector<Instruction> instructions = ExtractInstructionsPart1(parsedLines);        
-    std::vector<Vec2> vertices = ExtractVertices(instructions);       
-    auto extents = GetExtents(vertices);
-    std::vector<Edge> edges = ComputeEdges(vertices);    
-
-    Grid grid = CutTrench(instructions);    
-    //grid.Print(extents);
-
-    long long lagoonVolume = FillTrenchInterior(grid, extents);    
-    //grid.Print(extents);
-
-    std::cout << "ANSWER PART 1 - What is the lagoon's volume?: " << std::to_string(lagoonVolume) << "\n";
+    DoPart1(parsedLines);    
+    DoPart2(parsedLines);
     
     return 0;
 }

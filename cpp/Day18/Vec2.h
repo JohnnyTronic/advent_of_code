@@ -4,10 +4,10 @@
 
 class Vec2 {
 public:
-    int x{};
-    int y{};
+    long long x{};
+    long long y{};
     Vec2() {};
-    Vec2(int x, int y) : x(x), y(y) {}
+    Vec2(long long x, long long y) : x(x), y(y) {}
 
     //bool operator<(const Vec2& other) const { return x < other.x && y < other.y; };
 };
