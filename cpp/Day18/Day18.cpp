@@ -213,10 +213,7 @@ long long FillTrenchInterior(Grid& grid, Extents& extents) {
     return totalHollowCells;
 }
 
-int main()
-{
-    std::cout << "Advent of Code - Day 18!\n";
-
+std::vector<std::string> ParseInput(const std::string& fileName) {
     std::ifstream ifs("input.txt");
     std::string parsedLine;
     std::vector<std::string> parsedLines;
@@ -225,6 +222,10 @@ int main()
         parsedLines.push_back(parsedLine);
     }
 
+    return parsedLines;
+}
+
+std::vector<Instruction> ExtractInstructionsPart1(const std::vector<std::string>& parsedLines) {
     std::vector<Instruction> instructions;
     std::regex instructionPattern(R"((\w)\s(\d+)\s(.+))");
     for (const auto& line : parsedLines) {
@@ -236,46 +237,55 @@ int main()
         Instruction instruction(direction, distance, hexColor);
         instructions.push_back(instruction);
     }
-    
-    long long lagoonVolume = 0;
-    std::vector<Vec2> vertices;
-    {
-        Vec2 currentPosition(0, 0);
-        vertices.push_back(currentPosition);
-        for (auto& instruction : instructions) {
-            auto directionVector = DirectionToVec2(instruction.direction);
-            currentPosition = currentPosition + (directionVector * instruction.distance);
-            vertices.push_back(currentPosition);
-        }
-    }
-    
-    auto extents = GetExtents(vertices);
 
+    return instructions;
+}
+
+std::vector<Vec2> ExtractVertices(const std::vector<Instruction>& instructions) {
+    std::vector<Vec2> vertices;
+
+    Vec2 currentPosition(0, 0);
+    vertices.push_back(currentPosition);
+    for (auto& instruction : instructions) {
+        auto directionVector = DirectionToVec2(instruction.direction);
+        currentPosition = currentPosition + (directionVector * instruction.distance);
+        vertices.push_back(currentPosition);
+    }
+
+    return vertices;
+}
+
+std::vector<Edge> ComputeEdges(const std::vector<Vec2>& vertices) {
     std::vector<Edge> edges;
+
     for (int i = 0; i < vertices.size() - 1; i++) {
         Edge edge(vertices[i], vertices[i + 1]);
         edges.push_back(edge);
-    }    
+    }
     Edge finalEdge(vertices.back(), vertices.front());
     edges.push_back(finalEdge);
 
-    Grid grid = CutTrench(instructions);    
-    grid.Print(extents);
-
-    lagoonVolume = FillTrenchInterior(grid, extents);    
-    grid.Print(extents);
-
-    std::cout << "ANSWER PART 1 - What is the lagoon's volume?: " << std::to_string(lagoonVolume) << "\n";
-    return 0;
+    return edges;
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
+int main()
+{
+    std::cout << "Advent of Code - Day 18!\n";
 
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
+    auto parsedLines = ParseInput("input.txt");
+    
+    std::vector<Instruction> instructions = ExtractInstructionsPart1(parsedLines);        
+    std::vector<Vec2> vertices = ExtractVertices(instructions);       
+    auto extents = GetExtents(vertices);
+    std::vector<Edge> edges = ComputeEdges(vertices);    
+
+    Grid grid = CutTrench(instructions);    
+    //grid.Print(extents);
+
+    long long lagoonVolume = FillTrenchInterior(grid, extents);    
+    //grid.Print(extents);
+
+    std::cout << "ANSWER PART 1 - What is the lagoon's volume?: " << std::to_string(lagoonVolume) << "\n";
+    
+    return 0;
+}
