@@ -28,6 +28,41 @@ public:
     }
 };
 
+struct Range {
+public:
+    int min = 1;
+    int max = 4000;
+
+    bool IsValueWithinRange(int value) {
+        return value >= min && value <= max;
+    }
+
+    std::tuple<Range, Range> Split(char comparison, int splitValue) {
+        if (comparison == '<') {
+            Range acceptedRange{ min, splitValue - 1 };
+            Range rejectedRange{ splitValue, max };
+
+            return { acceptedRange, rejectedRange };
+
+        }
+        else if (comparison == '>') {
+            Range rejectedRange{ min, splitValue };
+            Range acceptedRange{ splitValue + 1, max };
+
+            return { acceptedRange, rejectedRange };
+        }
+        else {
+            throw "Unreconized operation.";
+        }
+    }
+
+    long long Permutations() {
+        return (max - min) + 1;
+    }
+};
+
+
+
 class Rule {
 public:
     char targetProperty = ' ';
@@ -38,7 +73,7 @@ public:
     Rule(std::string destination) :destination(destination) {}
 
     Rule(char targetProperty, char comparison, long long value, std::string destination) : targetProperty(targetProperty), comparison(comparison), value(value), destination(destination) {}
-
+       
     std::string EvaluateMachinePart(const MachinePart& part) {
         // Does this part trigger this rule? Return "destination" if so, return " " if not
         if (comparison == ' ') {
@@ -69,6 +104,7 @@ public:
         }
     }
 };
+
 
 class Workflow {
 public:
@@ -121,6 +157,69 @@ public:
                 return result;
             }
         }
+    }
+};
+
+
+struct RangeMachinePart {
+public:
+    Range xRange{};
+    Range mRange{};
+    Range aRange{};
+    Range sRange{};  
+
+    Range& GetAffectedRange(const Rule& rule) {
+        Range affectedRange;
+        switch (rule.targetProperty) {
+        case 'x': return xRange;
+        case 'm': return mRange;
+        case 'a': return aRange;
+        case 's': return sRange; 
+        };
+
+    }
+
+    bool DoesRuleSplitPart(const Rule& rule) {
+        bool a = rule.destination == "A";
+        bool b = rule.destination == "R";
+        bool c = rule.targetProperty == ' ';
+        bool d = rule.comparison == ' ';
+        if (rule.targetProperty == ' ' || rule.comparison == ' ')
+            return false;
+
+        Range& affectedRange = GetAffectedRange(rule);
+        return rule.value > affectedRange.min && rule.value < affectedRange.max;
+    }
+
+    std::tuple<RangeMachinePart, RangeMachinePart> SplitPartOnRule(const Rule& rule) {        
+        switch (rule.targetProperty) {
+        case 'x': {
+            auto subRanges = xRange.Split(rule.comparison, rule.value);
+            RangeMachinePart acceptedSubPart{ std::get<0>(subRanges), mRange, aRange, sRange };
+            RangeMachinePart rejectedSubPart{ std::get<1>(subRanges), mRange, aRange, sRange };
+            return { acceptedSubPart, rejectedSubPart };
+        }
+        case 'm': {
+            auto subRanges = mRange.Split(rule.comparison, rule.value);
+            RangeMachinePart acceptedSubPart{ xRange, std::get<0>(subRanges), aRange, sRange };
+            RangeMachinePart rejectedSubPart{ xRange, std::get<1>(subRanges), aRange, sRange };
+            return { acceptedSubPart, rejectedSubPart };
+        }
+        case 'a': {
+            auto subRanges = aRange.Split(rule.comparison, rule.value);
+            RangeMachinePart acceptedSubPart{ xRange, mRange, std::get<0>(subRanges), sRange };
+            RangeMachinePart rejectedSubPart{ xRange, mRange, std::get<1>(subRanges), sRange };
+            return { acceptedSubPart, rejectedSubPart };
+        }
+        case 's': {
+            auto subRanges = sRange.Split(rule.comparison, rule.value);
+            RangeMachinePart acceptedSubPart{ xRange, mRange, aRange, std::get<0>(subRanges) };
+            RangeMachinePart rejectedSubPart{ xRange, mRange, aRange, std::get<1>(subRanges) };
+            return { acceptedSubPart, rejectedSubPart };
+        }
+        default:
+            throw "Unrecognized target property: " + rule.targetProperty;
+        }       
     }
 };
 
@@ -185,6 +284,81 @@ void DoPart1(const std::map<std::string,Workflow>& workflows, const std::vector<
     std::cout << "PART 1 ANSWER - Sum of all accepted part values: " << totalScore << "\n";
 }
 
+std::tuple<std::vector<RangeMachinePart>, std::vector<RangeMachinePart>> ProcessRangePartThroughWorkflow(RangeMachinePart& rangePart, const Workflow& workflow, const std::map<std::string,Workflow>& allWorkflows) {
+
+    std::vector<RangeMachinePart> acceptedParts;
+    std::vector<RangeMachinePart> rejectedParts;
+    RangeMachinePart targetRangePart = rangePart;
+    for (auto& rule : workflow.rules) {
+        if (targetRangePart.DoesRuleSplitPart(rule)) {
+            auto splitResult = targetRangePart.SplitPartOnRule(rule);
+            RangeMachinePart triggeredPart = std::get<0>(splitResult);
+            if (rule.destination == "A") {
+                acceptedParts.push_back(triggeredPart);
+            }
+            else if (rule.destination == "R") {
+                rejectedParts.push_back(triggeredPart);
+            }
+            else {
+                std::string triggeredDestination = rule.destination;
+                Workflow nextWorkflow = allWorkflows.find(triggeredDestination)->second;
+                auto subResult = ProcessRangePartThroughWorkflow(triggeredPart, nextWorkflow, allWorkflows);
+                for(auto& acceptedPart : std::get<0>(subResult))
+                    acceptedParts.push_back(acceptedPart);
+
+                for (auto& rejectedPart : std::get<1>(subResult))
+                    rejectedParts.push_back(rejectedPart);                
+            }
+
+            RangeMachinePart ignoredPart = std::get<1>(splitResult);
+            targetRangePart = ignoredPart;
+        }
+        else {
+            if (rule.destination == "A") {
+                acceptedParts.push_back(targetRangePart);
+            }
+            else if (rule.destination == "R") {
+                rejectedParts.push_back(targetRangePart);
+            }
+            else {
+                auto& nextWorkflow = allWorkflows.find(rule.destination)->second;
+                auto subResult = ProcessRangePartThroughWorkflow(targetRangePart, nextWorkflow, allWorkflows);
+                for (auto& acceptedPart : std::get<0>(subResult))
+                    acceptedParts.push_back(acceptedPart);
+                for (auto& rejectedPart : std::get<1>(subResult))
+                    rejectedParts.push_back(rejectedPart);
+            }
+        }
+    }
+
+    return { acceptedParts, rejectedParts };
+}
+
+//struct WorkflowLoad {
+//    Workflow& workflow;
+//    std::vector<RangeMachinePart> rangeMachineParts;
+//};
+
+void DoPart2(const std::map<std::string, Workflow>& workflows) {
+
+    RangeMachinePart initialPart;   
+    Workflow initialWorkflow = workflows.find("in")->second;
+    std::tuple<std::vector<RangeMachinePart>, std::vector<RangeMachinePart>> partClassifications = ProcessRangePartThroughWorkflow(initialPart, initialWorkflow, workflows);
+
+    auto acceptedRangeParts = std::get<0>(partClassifications);    
+    long long totalAcceptablePartPermutations = 0;
+    for (auto& part : acceptedRangeParts) {
+        long long xPerms = part.xRange.Permutations();
+        long long mPerms = part.mRange.Permutations();
+        long long aPerms = part.aRange.Permutations();
+        long long sPerms = part.sRange.Permutations();
+        long long permutations = xPerms * mPerms * aPerms * sPerms;
+        totalAcceptablePartPermutations += permutations;        
+    }
+
+    std::cout << "PART 2 ANSWER - Total combination of valid parts: " << totalAcceptablePartPermutations << "\n";
+}
+
 int main()
 {
     std::cout << "Advent of Code - Day 19!\n";
@@ -194,6 +368,6 @@ int main()
     auto machineParts = std::get<1>(input);
 
     DoPart1(workflows, machineParts);    
-        
+    DoPart2(workflows);
     return 0;
 }
