@@ -334,11 +334,6 @@ std::tuple<std::vector<RangeMachinePart>, std::vector<RangeMachinePart>> Process
     return { acceptedParts, rejectedParts };
 }
 
-//struct WorkflowLoad {
-//    Workflow& workflow;
-//    std::vector<RangeMachinePart> rangeMachineParts;
-//};
-
 void DoPart2(const std::map<std::string, Workflow>& workflows) {
 
     RangeMachinePart initialPart;   
