@@ -2,6 +2,8 @@
 #include "BroadcasterModule.h"
 #include "FlipFlopModule.h"
 #include "ConjunctionModule.h"
+#include "PulseQueue.h"
+#include "ButtonModule.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -10,10 +12,10 @@
 #include <vector>
 #include <map>
 
-std::map<std::string, Module*> ParseInput(const std::string& fileName) {
+std::tuple<std::map<std::string, Module*>, PulseQueue*> ParseInput(const std::string& fileName) {
 
     std::map<std::string, Module*> moduleMap;
-    PulseQueue pulseQueue;
+    PulseQueue* pulseQueue = new PulseQueue();
 
     std::ifstream ifs(fileName);
     std::string parsedLine;    
@@ -30,7 +32,8 @@ std::map<std::string, Module*> ParseInput(const std::string& fileName) {
         auto downstreamModulesString = wholeModuleMatch[2].str();
 
         if (moduleNameString == "broadcaster") {
-            Module* broadcasterModule = new BroadcasterModule("broadcaster", pulseQueue);
+            std::string broadcasterModuleName = "broadcaster";
+            Module* broadcasterModule = new BroadcasterModule(broadcasterModuleName, pulseQueue);
             moduleMap[broadcasterModule->name] = broadcasterModule;
         }
         else {
@@ -38,24 +41,39 @@ std::map<std::string, Module*> ParseInput(const std::string& fileName) {
             auto moduleNameSearchResult = std::regex_search(moduleNameString, moduleNameMatch, moduleNamePattern);
         }        
     }
+
+    return { moduleMap, pulseQueue };
 }
 
-void DoPart1() {
-    long long productOfTotalPulses = 0;
+void DoPart1(std::map<std::string, Module*> moduleMap, PulseQueue* pulseQueue) {
+    
+    Module* buttonModulePtr = moduleMap.find("button")->second;
+    //ButtonModule* buttonModule { std::static_cast<ButtonModule*>(buttonModulePtr) };
+    int buttonPushCount = 1000;
+    for (int i = 0; i < buttonPushCount; i++) {
+        //buttonModule->PushButton();
+        pulseQueue->SimulatePulses();
+    }
+
+
+    long long productOfTotalPulses = pulseQueue->highPulseTally * pulseQueue->lowPulseTally;
 
     std::cout << "PART 1 ANSWER - Product of total low and high pulses: " << productOfTotalPulses << "\n";
 }
 
-void DoPart2() {
+void DoPart2(std::map<std::string, Module*> moduleMap, PulseQueue* pulseQueue) {
     // Not implemented yet.
+    pulseQueue->Reset();
 }
 
 int main()
 {
     std::cout << "Advent of Code - Day 20!\n";
 
-    ParseInput("test_input.txt");
+    auto inputs = ParseInput("test_input.txt");
+    auto moduleMap = std::get<0>(inputs);
+    auto pulseQueue = std::get<1>(inputs);
 
-    DoPart1();
-    DoPart2();
+    DoPart1(moduleMap, pulseQueue);
+    DoPart2(moduleMap, pulseQueue);
 }

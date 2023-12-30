@@ -104,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -128,6 +129,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Day20.cpp" />
+    <ClCompile Include="FlipFlopModule.cpp" />
+    <ClCompile Include="Module.cpp" />
+    <ClCompile Include="PulseQueue.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
@@ -135,10 +139,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BroadcasterModule.h" />
+    <ClInclude Include="ButtonModule.h" />
     <ClInclude Include="ConjunctionModule.h" />
     <ClInclude Include="FlipFlopModule.h" />
     <ClInclude Include="Module.h" />
     <ClInclude Include="Pulse.h" />
+    <ClInclude Include="PulseLevel.h" />
     <ClInclude Include="PulseQueue.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

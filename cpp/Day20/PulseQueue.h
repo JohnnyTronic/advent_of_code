@@ -9,11 +9,7 @@ public:
 	long long lowPulseTally;
 	long long highPulseTally;
 
-	void SendPulse(Pulse* pulse) {
-		queue.push_back(pulse);
-		switch (pulse->level) {
-		case HIGH: highPulseTally++; break;
-		case LOW: lowPulseTally++; break;
-		}
-	}
+	void SendPulse(Pulse* pulse);
+	void Reset();
+	void SimulatePulses();
 };

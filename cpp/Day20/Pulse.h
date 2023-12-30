@@ -1,13 +1,8 @@
 #pragma once
 
-#include "Module.h"
+#include "PulseLevel.h"
 
 class Module;
-
-enum PulseLevel {
-	LOW,
-	HIGH
-};
 
 class Pulse {
 public:
