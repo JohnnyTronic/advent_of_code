@@ -21,11 +21,19 @@ void PulseQueue::Reset() {
 	}
 }
 
-void PulseQueue::SimulatePulses() {
+long long lastTxHigh = -1;
+
+void PulseQueue::SimulatePulses(long long buttonPushCount) {
 	while (queue.size() > 0) {
 		Pulse* pulse = queue.front();
 		queue.pop_front();
 
 		pulse->toModule->ReceivePulse(pulse);
+
+		if (pulse->fromModule->name == "ph" && pulse->level == HIGH) {
+			long long delta = buttonPushCount - lastTxHigh;
+			std::cout << "ph sent HIGH pulse on buttonPushCount " << buttonPushCount << ". Delta: " << delta << "\n";
+			lastTxHigh = buttonPushCount;
+		}
 	}
 }

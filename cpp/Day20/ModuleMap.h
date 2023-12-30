@@ -10,6 +10,7 @@ class ModuleMap {
 public:
 	ButtonModule* buttonModule;
 	BroadcasterModule* broadcasterModule;
+	DeadEndModule* rxModule;
 	std::map<std::string, FlipFlopModule*> flipFlopModules;
 	std::map<std::string, ConjunctionModule*> conjuctionModules;
 	std::map<std::string, DeadEndModule*> deadEndModules;
@@ -49,7 +50,17 @@ public:
 		// A "dead end" module that's only mentioned in some other module's output
 		DeadEndModule* deadEndModule = new DeadEndModule(moduleName);
 		deadEndModules[moduleName] = deadEndModule;
+		if (moduleName == "rx")
+			rxModule = deadEndModule;
 
 		return deadEndModule;
+	}
+
+	void ResetModules() {
+		for (auto& module : flipFlopModules)
+			module.second->Reset();
+
+		for (auto& module : conjuctionModules)
+			module.second->Reset();
 	}
 };

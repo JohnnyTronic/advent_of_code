@@ -9,4 +9,7 @@ public:
 	FlipFlopModule(std::string name, PulseQueue* pulseQueue) : Module(name, pulseQueue) {};
 
 	void ReceivePulse(Pulse* pulse) override;
+	void Reset() {
+		isOn = false;
+	}
 };

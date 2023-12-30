@@ -11,5 +11,5 @@ public:
 
 	void SendPulse(Pulse* pulse);
 	void Reset();
-	void SimulatePulses();
+	void SimulatePulses(long long buttonPushCount);
 };

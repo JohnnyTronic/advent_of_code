@@ -130,12 +130,14 @@
   <ItemGroup>
     <ClCompile Include="ConjunctionModule.cpp" />
     <ClCompile Include="Day20.cpp" />
+    <ClCompile Include="DeadEndModule.cpp" />
     <ClCompile Include="FlipFlopModule.cpp" />
     <ClCompile Include="Module.cpp" />
     <ClCompile Include="PulseQueue.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
+    <Text Include="MermaidDiagram.txt" />
     <Text Include="test2_input.txt" />
     <Text Include="test_input.txt" />
   </ItemGroup>

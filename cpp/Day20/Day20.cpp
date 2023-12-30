@@ -92,20 +92,49 @@ void DoPart1(ModuleMap* moduleMap, PulseQueue* pulseQueue) {
     ButtonModule* buttonModule = moduleMap->buttonModule;
     //ButtonModule* buttonModule { std::static_cast<ButtonModule*>(buttonModulePtr) };
     int buttonPushCount = 1000;
-    for (int i = 0; i < buttonPushCount; i++) {
+    for (int i = 1; i <= buttonPushCount; i++) {
         buttonModule->PushButton();
-        pulseQueue->SimulatePulses();
+        pulseQueue->SimulatePulses(i);
     }
-
 
     long long productOfTotalPulses = pulseQueue->highPulseTally * pulseQueue->lowPulseTally;
 
     std::cout << "PART 1 ANSWER - Product of total low and high pulses: " << productOfTotalPulses << "\n";
 }
 
-void DoPart2(ModuleMap* moduleMap, PulseQueue* pulseQueue) {
-    // Not implemented yet.
+void DoPart2(ModuleMap* moduleMap, PulseQueue* pulseQueue) {   
+    moduleMap->ResetModules();
     pulseQueue->Reset();
+
+    // rx upstreams: &ls
+    // ls upstreams: &tx, &dd, &nz, &ph
+    // tx sends a HIGH every 4051 pushes
+    // dd sends a HIGH every 3889 pushes
+    // nz sends a HIGH every 3907 pushes
+    // ph sends a HIGH every 3779 pushes
+    // LEAST COMMON MULTIPLE IS 232605773145467
+
+    ConjunctionModule* tx = moduleMap->conjuctionModules["tx"];
+    ConjunctionModule* dd = moduleMap->conjuctionModules["dd"];
+    ConjunctionModule* nz = moduleMap->conjuctionModules["nz"];
+    ConjunctionModule* ph = moduleMap->conjuctionModules["ph"];
+
+    int buttonPushCount = 0;
+    while (!moduleMap->rxModule->HasReceivedLowPulse()) {
+        tx->ClearFlag();
+        dd->ClearFlag();
+        nz->ClearFlag();
+        ph->ClearFlag();
+        buttonPushCount++;
+        moduleMap->buttonModule->PushButton();
+        pulseQueue->SimulatePulses(buttonPushCount);
+
+        if (tx->lastSentPulse == 1) {
+            std::cout << "tx sent high pulse on button count: " << buttonPushCount << "\n";
+        }
+    }
+    std::cout << "PART 2 ANSWER (Calculated Manually): 232605773145467\n";
+    std::cout << "PART 2 ANSWER - How many button presses until rx receives a single LOW pulse?: " << std::to_string(buttonPushCount) << "\n";
 }
 
 int main()

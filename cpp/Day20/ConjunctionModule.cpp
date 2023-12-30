@@ -22,8 +22,13 @@ void ConjunctionModule::ReceivePulse(Pulse* pulse) {
 	}
 	if (areAllUpstreamLevelsHigh) {
 		SendPulse(LOW);
+		lastSentPulse = 0;
 	}
 	else {
 		SendPulse(HIGH);
+		lastSentPulse = 1;
+		if (this->name == "tx") {
+			//throw;
+		}
 	}
 }
