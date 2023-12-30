@@ -17,6 +17,7 @@ std::tuple<std::map<std::string, Module*>, PulseQueue*> ParseInput(const std::st
     std::map<std::string, Module*> moduleMap;
     PulseQueue* pulseQueue = new PulseQueue();
 
+    std::vector<std::string> downstreamModuleStrings;
     std::ifstream ifs(fileName);
     std::string parsedLine;    
     std::regex wholeModulePattern(R"((.+)\s->\s(.+))");
@@ -30,6 +31,7 @@ std::tuple<std::map<std::string, Module*>, PulseQueue*> ParseInput(const std::st
 
         auto moduleNameString = wholeModuleMatch[1].str();
         auto downstreamModulesString = wholeModuleMatch[2].str();
+        downstreamModuleStrings.push_back(downstreamModulesString); // Will be used in 2nd pass to wire modules together
 
         if (moduleNameString == "broadcaster") {
             std::string broadcasterModuleName = "broadcaster";
@@ -39,8 +41,27 @@ std::tuple<std::map<std::string, Module*>, PulseQueue*> ParseInput(const std::st
         else {
             std::smatch moduleNameMatch;
             auto moduleNameSearchResult = std::regex_search(moduleNameString, moduleNameMatch, moduleNamePattern);
+            auto moduleType = moduleNameMatch[0].str();
+            auto moduleName = moduleNameMatch[1].str();
+            if (moduleType == "%") {
+                FlipFlopModule* flipFlopModule = new FlipFlopModule(moduleName, pulseQueue);
+                moduleMap[moduleName] = flipFlopModule;
+            }
+            else if (moduleType == "&") {
+                ConjunctionModule* conjunctionModule = new ConjunctionModule(moduleName, pulseQueue);
+                moduleMap[moduleName] = conjunctionModule;
+            }
+            else {
+                throw "Unrecognized module type: " + moduleType;
+            }            
         }        
     }
+
+    // Wire all the modules together
+    for (auto downstreamString : downstreamModuleStrings) {
+
+    }
+
 
     return { moduleMap, pulseQueue };
 }

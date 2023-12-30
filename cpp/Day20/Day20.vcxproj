@@ -128,6 +128,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ConjunctionModule.cpp" />
     <ClCompile Include="Day20.cpp" />
     <ClCompile Include="FlipFlopModule.cpp" />
     <ClCompile Include="Module.cpp" />

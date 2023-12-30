@@ -1,10 +1,15 @@
 #pragma once
 
 #include "Module.h"
+#include <map>
 
-class ConjuctionModule : public Module {
+class ConjunctionModule : public Module {
 public:
-	void ReceivePulse(Pulse* pulse) override {
+	ConjunctionModule(std::string name, PulseQueue* pulseQueue) : Module(name, pulseQueue) {};
 
-	}
+	void AddUpstreamModule(Module* upstreamModule);
+	void ReceivePulse(Pulse* pulse) override;
+
+private:
+	std::map<std::string, PulseLevel> upstreamModuleLevels;
 };

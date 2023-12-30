@@ -27,6 +27,9 @@
     <ClCompile Include="FlipFlopModule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ConjunctionModule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="test_input.txt" />
