@@ -7,7 +7,7 @@ class ConjunctionModule : public Module {
 public:
 	ConjunctionModule(std::string name, PulseQueue* pulseQueue) : Module(name, pulseQueue) {};
 
-	void AddUpstreamModule(Module* upstreamModule);
+	void AddUpstreamModule(Module* upstreamModule) override;
 	void ReceivePulse(Pulse* pulse) override;
 
 private:

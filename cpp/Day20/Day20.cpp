@@ -4,6 +4,7 @@
 #include "ConjunctionModule.h"
 #include "PulseQueue.h"
 #include "ButtonModule.h"
+#include "ModuleMap.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -11,13 +12,14 @@
 #include <queue>
 #include <vector>
 #include <map>
+#include <memory>
 
-std::tuple<std::map<std::string, Module*>, PulseQueue*> ParseInput(const std::string& fileName) {
+std::tuple<ModuleMap*, PulseQueue*> ParseInput(const std::string& fileName) {
 
-    std::map<std::string, Module*> moduleMap;
+    ModuleMap* moduleMap = new ModuleMap();
     PulseQueue* pulseQueue = new PulseQueue();
 
-    std::vector<std::string> downstreamModuleStrings;
+    std::map<Module*, std::string> downstreamModuleStrings;
     std::ifstream ifs(fileName);
     std::string parsedLine;    
     std::regex wholeModulePattern(R"((.+)\s->\s(.+))");
@@ -31,25 +33,27 @@ std::tuple<std::map<std::string, Module*>, PulseQueue*> ParseInput(const std::st
 
         auto moduleNameString = wholeModuleMatch[1].str();
         auto downstreamModulesString = wholeModuleMatch[2].str();
-        downstreamModuleStrings.push_back(downstreamModulesString); // Will be used in 2nd pass to wire modules together
 
         if (moduleNameString == "broadcaster") {
             std::string broadcasterModuleName = "broadcaster";
-            Module* broadcasterModule = new BroadcasterModule(broadcasterModuleName, pulseQueue);
-            moduleMap[broadcasterModule->name] = broadcasterModule;
+            auto broadcasterModule = new BroadcasterModule(broadcasterModuleName, pulseQueue);
+            moduleMap->AddModule(broadcasterModule);
+            downstreamModuleStrings[broadcasterModule] = downstreamModulesString; // Will be used in 2nd pass to wire modules together
         }
         else {
             std::smatch moduleNameMatch;
             auto moduleNameSearchResult = std::regex_search(moduleNameString, moduleNameMatch, moduleNamePattern);
-            auto moduleType = moduleNameMatch[0].str();
-            auto moduleName = moduleNameMatch[1].str();
+            auto moduleType = moduleNameMatch[1].str();
+            auto moduleName = moduleNameMatch[2].str();
             if (moduleType == "%") {
                 FlipFlopModule* flipFlopModule = new FlipFlopModule(moduleName, pulseQueue);
-                moduleMap[moduleName] = flipFlopModule;
+                moduleMap->AddModule(flipFlopModule);
+                downstreamModuleStrings[flipFlopModule] = downstreamModulesString;
             }
             else if (moduleType == "&") {
                 ConjunctionModule* conjunctionModule = new ConjunctionModule(moduleName, pulseQueue);
-                moduleMap[moduleName] = conjunctionModule;
+                moduleMap->AddModule(conjunctionModule);
+                downstreamModuleStrings[conjunctionModule] = downstreamModulesString;
             }
             else {
                 throw "Unrecognized module type: " + moduleType;
@@ -58,21 +62,38 @@ std::tuple<std::map<std::string, Module*>, PulseQueue*> ParseInput(const std::st
     }
 
     // Wire all the modules together
-    for (auto downstreamString : downstreamModuleStrings) {
+    for (auto kvp : downstreamModuleStrings) {
+        auto module = kvp.first;
+        auto downstreamString = kvp.second;
+        int foundIndex = 0;
+        do {
+            foundIndex = downstreamString.find(", ");
+            auto token = downstreamString.substr(0, foundIndex);
+            downstreamString.erase(0, foundIndex + 2);
 
+            auto downstreamModule = moduleMap->GetModule(token);
+            // Some downstream modules are not otherwise mentioned
+            if (downstreamModule == nullptr) {
+
+            }
+            module->AddDownstreamModule(downstreamModule);
+            downstreamModule->AddUpstreamModule(module);
+        } while (foundIndex != std::string::npos);        
     }
-
+    
+    ButtonModule* buttonModule = new ButtonModule(moduleMap->broadcasterModule, pulseQueue);
+    moduleMap->AddModule(buttonModule);
 
     return { moduleMap, pulseQueue };
 }
 
-void DoPart1(std::map<std::string, Module*> moduleMap, PulseQueue* pulseQueue) {
+void DoPart1(ModuleMap* moduleMap, PulseQueue* pulseQueue) {
     
-    Module* buttonModulePtr = moduleMap.find("button")->second;
+    ButtonModule* buttonModule = moduleMap->buttonModule;
     //ButtonModule* buttonModule { std::static_cast<ButtonModule*>(buttonModulePtr) };
     int buttonPushCount = 1000;
     for (int i = 0; i < buttonPushCount; i++) {
-        //buttonModule->PushButton();
+        buttonModule->PushButton();
         pulseQueue->SimulatePulses();
     }
 
@@ -82,7 +103,7 @@ void DoPart1(std::map<std::string, Module*> moduleMap, PulseQueue* pulseQueue) {
     std::cout << "PART 1 ANSWER - Product of total low and high pulses: " << productOfTotalPulses << "\n";
 }
 
-void DoPart2(std::map<std::string, Module*> moduleMap, PulseQueue* pulseQueue) {
+void DoPart2(ModuleMap* moduleMap, PulseQueue* pulseQueue) {
     // Not implemented yet.
     pulseQueue->Reset();
 }
@@ -91,7 +112,7 @@ int main()
 {
     std::cout << "Advent of Code - Day 20!\n";
 
-    auto inputs = ParseInput("test_input.txt");
+    auto inputs = ParseInput("input.txt");
     auto moduleMap = std::get<0>(inputs);
     auto pulseQueue = std::get<1>(inputs);
 

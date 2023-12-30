@@ -1,6 +1,7 @@
 #include "ConjunctionModule.h"
 
 void ConjunctionModule::AddUpstreamModule(Module* upstreamModule) {
+	Module::AddUpstreamModule(upstreamModule);
 	upstreamModuleLevels[upstreamModule->name] = LOW;
 }
 

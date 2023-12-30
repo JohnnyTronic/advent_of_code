@@ -12,9 +12,11 @@ public:
 	void PushButton() {
 		Pulse* buttonPulse = new Pulse(this, broadcasterModule, LOW);
 		pulseQueue->SendPulse(buttonPulse);
-
-		pulseQueue->SimulatePulses();
 	}
+
+	void ReceivePulse(Pulse* pulse) override {
+		throw "Button should never receive a pulse.";
+	};
 
 private:
 	BroadcasterModule* broadcasterModule;

@@ -7,6 +7,14 @@
 void Module::SendPulse(PulseLevel level) {
 	for (auto downstreamModule : downstreamModules) {
 		Pulse* newPulse = new Pulse(this, downstreamModule, level);
-		pulseQueue->queue.push_back(newPulse);
+		pulseQueue->SendPulse(newPulse);
 	}
+}
+
+void Module::AddUpstreamModule(Module* upstreamModule) {
+	upstreamModules.push_back(upstreamModule);
+}
+
+void Module::AddDownstreamModule(Module* downstreamModule) {
+	downstreamModules.push_back(downstreamModule);
 }

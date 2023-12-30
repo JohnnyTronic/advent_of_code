@@ -34,6 +34,7 @@
   <ItemGroup>
     <Text Include="test_input.txt" />
     <Text Include="input.txt" />
+    <Text Include="test2_input.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BroadcasterModule.h">
@@ -58,6 +59,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Pulse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DeadEndModule.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

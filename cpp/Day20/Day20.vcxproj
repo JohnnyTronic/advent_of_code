@@ -136,14 +136,17 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
+    <Text Include="test2_input.txt" />
     <Text Include="test_input.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BroadcasterModule.h" />
     <ClInclude Include="ButtonModule.h" />
     <ClInclude Include="ConjunctionModule.h" />
+    <ClInclude Include="DeadEndModule.h" />
     <ClInclude Include="FlipFlopModule.h" />
     <ClInclude Include="Module.h" />
+    <ClInclude Include="ModuleMap.h" />
     <ClInclude Include="Pulse.h" />
     <ClInclude Include="PulseLevel.h" />
     <ClInclude Include="PulseQueue.h" />

@@ -1,6 +1,7 @@
 #include "Pulse.h"
 #include "PulseQueue.h"
 #include "Module.h"
+#include <iostream>
 
 void PulseQueue::SendPulse(Pulse* pulse) {
 	queue.push_back(pulse);
@@ -8,6 +9,7 @@ void PulseQueue::SendPulse(Pulse* pulse) {
 	case HIGH: highPulseTally++; break;
 	case LOW: lowPulseTally++; break;
 	}
+	//std::cout << "PulseQueue.SendPulse received - From: " << pulse->fromModule->name << ", To: " << pulse->toModule->name << ", Level: " << pulse->level << "\n";
 }
 
 void PulseQueue::Reset() {
