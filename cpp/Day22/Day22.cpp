@@ -51,26 +51,58 @@ struct Extents {
 
 class Volume {
 public:
-    std::vector<std::vector<std::vector<Brick*>>> cells;
+    std::unordered_map<std::size_t, Brick*> positionHashedBricks;
 
-    Volume(const std::vector<Brick*>& bricks, const Extents& extents) {
-        
-        for (int z = extents.zMax; z >= extents.zMin; z--) {
-            std::vector<std::vector<Brick*>> layer;
-            for (int y = extents.yMin; y <= extents.yMax; y++) {
-                std::vector<Brick*> row;
-                for (int x = extents.xMin; x <= extents.xMax; x++) {
-                    row.push_back(nullptr);
-                }
-                layer.push_back(row);
+    Volume(const std::vector<Brick*>& bricks) {
+        for (auto brick : bricks) {
+            for (auto interpolatedPosition : brick->interpolatedPositions) {
+                auto hash = interpolatedPosition.Hash();
+                if (positionHashedBricks.contains(hash))
+                    throw "Initial hash error.";
+                positionHashedBricks[hash] = brick;
             }
-            cells.push_back(layer);
-        }        
+        }
+    }
+
+    Brick* GetAt(Vec3 position) {
+        auto hash = position.Hash();
+        if (positionHashedBricks.contains(hash)) {
+            return positionHashedBricks[hash];
+        }
+
+        return nullptr;
+    }
+
+    void ClearAt(Vec3 position) {
+        auto hash = position.Hash();
+        positionHashedBricks.erase(hash);
+    }
+
+    void SetAt(Vec3 position, Brick* brick) {
+        auto hash = position.Hash();
+        positionHashedBricks[hash] = brick;
+    }
+
+    std::unordered_set<Brick*> GetBricksBelowBrick(Brick* targetBrick) {
+        std::unordered_set<Brick*> bricksBelow;
+
+        auto& interpolatedPositions = targetBrick->interpolatedPositions;
+        for (auto& position : interpolatedPositions) {
+            Vec3 belowPosition = position + Vec3(0, 0, -1);
+            auto belowHash = belowPosition.Hash();
+            auto brickBelow = GetAt(belowHash);
+            if (brickBelow != nullptr && brickBelow != targetBrick && !bricksBelow.contains(brickBelow)) {
+                bricksBelow.insert(brickBelow);
+            }
+        }
+
+        return bricksBelow;
     }
 };
 
 std::vector<Brick*> ParseInput(const std::string& fileName) {
 
+    int nextBrickID = 'A';
     std::vector<Brick*> bricks;
     Extents extents;
 
@@ -92,7 +124,9 @@ std::vector<Brick*> ParseInput(const std::string& fileName) {
 
         Vec3 start(x1, y1, z1);
         Vec3 end(x2, y2, z2);        
-        Brick* brick = new Brick(start,end);
+        Brick* brick = new Brick(nextBrickID++, start,end);
+        if (brick->zMin == 1)
+            brick->isPositionLocked = true;
         bricks.push_back(brick);
         extents.GrowToFit(start, end);
     }
@@ -100,23 +134,95 @@ std::vector<Brick*> ParseInput(const std::string& fileName) {
     return bricks;
 }
 
-void SettleBricks(std::vector<Brick*>& bricks) {
+void MoveBrickDownInVolume(Brick* brick, Volume& volume) {
+    for (auto& pos : brick->interpolatedPositions) {
+        volume.ClearAt(pos);
+    }
+    brick->MoveDown(1);
+    for (auto& pos : brick->interpolatedPositions) {
+        volume.SetAt(pos, brick);
+    }
+}
+
+void SettleBricks(std::vector<Brick*>& bricks, Volume& volume) {
     
-    std::vector<Brick*> movingBricks(bricks);
-    while (movingBricks.size() > 0) {        
-        for (auto brick : movingBricks) {
-            if (brick->isPositionLocked)
+    std::deque<Brick*> movingBricks;
+    for (auto brick : bricks)
+        movingBricks.push_back(brick);
+    movingBricks.erase(std::remove_if(movingBricks.begin(), movingBricks.end(), [](auto testBrick) {return testBrick->isPositionLocked; }));
+
+    while (movingBricks.size() > 0) { 
+        Brick* brick = movingBricks.front();
+        movingBricks.pop_front();
+               
+        auto bricksBelow = volume.GetBricksBelowBrick(brick);
+        if (bricksBelow.size() == 0) {
+            MoveBrickDownInVolume(brick,volume);
+            if (brick->zMin == 1) {
+                brick->isPositionLocked = true;
                 continue;
+            }
+            else {
+                movingBricks.push_back(brick);
+            }                
         }
+        else {
+            bool allBricksBelowLocked = true;
+            for (auto brickBelow : bricksBelow) {
+                if (brickBelow->isPositionLocked == false) {
+                    allBricksBelowLocked = false;
+                    break;
+                }
+            }
+            if (allBricksBelowLocked) {
+                brick->isPositionLocked = true;
+                continue;                   
+            }
+            else {
+                movingBricks.push_back(brick);
+            }
+        }        
     }
 }
 
 void DoPart1(std::vector<Brick*>& bricks) {
-    long long candidateBrickCount = 0;
 
-    SettleBricks(bricks);
+    Volume volume(bricks);    
+    SettleBricks(bricks, volume);
 
-    std::cout << "PART 1 ANSWER - How many single bricks could be disintegrated without disturbing the pile?: " << candidateBrickCount << "\n";
+    std::unordered_set<Brick*> criticalBricks;
+    std::unordered_set<Brick*> redundantBricks;
+    for (auto brick : bricks) {
+        brick->contactingBricksBelow.clear();
+        brick->contactingBricksAbove.clear();
+    }
+
+    for (auto focusBrick : bricks) {
+        auto bricksBelow = volume.GetBricksBelowBrick(focusBrick);
+        for (auto brickBelow : bricksBelow) {
+            brickBelow->contactingBricksAbove.push_back(focusBrick);
+            focusBrick->contactingBricksBelow.push_back(brickBelow);
+        }
+
+        if (bricksBelow.size() == 1) {
+            criticalBricks.insert(*bricksBelow.begin());
+        }
+
+        if (bricksBelow.size() > 1) {
+            for (auto brickBelow : bricksBelow) {
+                redundantBricks.insert(brickBelow);
+            }            
+        }          
+    }
+
+    std::erase_if(redundantBricks, [&](auto testBrick) {return criticalBricks.contains(testBrick); });
+   
+    for (auto brick : bricks) {
+        if (brick->contactingBricksAbove.size() == 0)
+            redundantBricks.insert(brick);
+    }
+
+    std::cout << "PART 1 ANSWER - How many single bricks could be disintegrated without disturbing the pile?: " << redundantBricks.size() << "\n";
 }
 
 void DoPart2(std::vector<Brick*>& bricks) {
