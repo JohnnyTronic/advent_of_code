@@ -10,6 +10,9 @@ public:
     Vec2(long long x, long long y) : x(x), y(y) {}
 
     //bool operator<(const Vec2& other) const { return x < other.x && y < other.y; };
+    std::size_t Hash() {
+        return x + (y << 16);
+    }
 };
 
 static Vec2 operator+(const Vec2& lhs, const Vec2& rhs) {

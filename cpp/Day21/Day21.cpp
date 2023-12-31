@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <unordered_set>
+#include <unordered_map>
 
 enum CellContent {
     START,
@@ -95,7 +96,7 @@ public:
     Vec2 position;
     int stepsRemaining;
 
-    CandidatePosition(Vec2 position, int stepsRemaining) : position(position), stepsRemaining(stepsRemaining) {};
+    CandidatePosition(Vec2 position = Vec2(0,0), int stepsRemaining = 0) : position(position), stepsRemaining(stepsRemaining) {};
 
     std::size_t Hash() const {   
         return stepsRemaining + (position.x << 8) + (position.y << 16);
@@ -181,7 +182,80 @@ void DoPart1(Grid& grid) {
 }
 
 void DoPart2(Grid& grid) {
-    // Not yet implemented
+    // Referencing the online AoC 2023 subreddit, it seems Part 2 is solved thanks to some particularities in the input data
+    // I.e. the garden pattern has empty edges, the starting row/column is clear, and there are diamond-shaped "highways" of clean cells
+    // Further, the target number of steps in multiple of the original grid dimensions
+    // As such, there are some geometric properties that can be exploited to calculate the finally tally of reachable positions without actually needing to "walk" them via code
+    // Due to the above, the rock placements don't actually prevent the elf from reaching adjacent garden plots
+    // See explanations such as:
+    // https://work.njae.me.uk/2023/12/29/advent-of-code-2023-day-21/
+    // https://github.com/villuna/aoc23/wiki/A-Geometric-solution-to-advent-of-code-2023,-day-21
+
+    std::unordered_map<std::size_t, CandidatePosition> visited;
+    std::queue<CandidatePosition> frontier;
+    CandidatePosition startPosition(grid.startingPosition, 0);
+    frontier.push(startPosition);
+    while (frontier.size() > 0) {
+        auto candidate = frontier.front();
+        frontier.pop();
+        if(visited.contains(candidate.position.Hash()))
+            continue;
+        visited[candidate.position.Hash()] = candidate;
+
+       std::vector<Vec2> neighbourPositions{
+       candidate.position + Vec2(0, -1), // North
+       candidate.position + Vec2(1,0), // East
+       candidate.position + Vec2(0,1), // South
+       candidate.position + Vec2(-1,0) // West
+        };
+
+       for (auto& neighbourPosition : neighbourPositions) {
+           if (!grid.IsWithinBounds(neighbourPosition))
+               continue;
+           auto& neighbourCell = grid.GetCell(neighbourPosition);
+           if (neighbourCell.content == ROCK)
+               continue;
+           if (visited.contains(neighbourPosition.Hash()))
+               continue;
+
+           CandidatePosition neighbourCandidate(neighbourPosition, candidate.stepsRemaining + 1);
+           frontier.push(neighbourCandidate);           
+       }
+    }
+
+    // At this point, we should all the cells in the grid mapped out with how many steps it took for the elf to reach them
+
+    // Count how many have even steps less than 64
+    int evenFullCount = 0;
+    int oddFullCount = 0;
+    int evenCornerCount = 0;
+    int oddCornerCount = 0;
+    for (auto& candidate : visited) {
+        int steps = candidate.second.stepsRemaining;
+        if (steps % 2 == 0)
+            evenFullCount++;
+
+        if (steps % 2 == 1)
+            oddFullCount++;
+
+        if (steps % 2 == 0 && steps > 65)
+            evenCornerCount++;
+
+        if (steps % 2 == 1 && steps > 65)
+            oddCornerCount++;
+    }
+
+    long long targetSteps = 26501365;
+    long long n = (targetSteps - (grid.width / 2)) / grid.width;
+    if (n != 202300)
+        throw "Incorrect dimensions";
+    long long evenTiles = n * n;
+    long long oddTiles = (n + 1) * (n + 1);
+
+    long long answer2 = oddTiles * oddFullCount + evenTiles * evenFullCount - ((n + 1) * oddCornerCount) + (n * evenCornerCount);
+
+    std::cout << "PART 2 ANSWER - Total reachable positions in infinitely tiling garden: " << answer2 << "\n";
+
 }
 
 void TestHashing() {
@@ -207,7 +281,7 @@ void TestHashing() {
 
 int main()
 {
-    TestHashing();
+    //TestHashing();
     std::cout << "Advent of Code - Day 21!\n";
 
     Grid grid = ParseInput("input.txt");
