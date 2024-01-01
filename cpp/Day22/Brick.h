@@ -14,6 +14,8 @@ public:
 	std::vector<Brick*> contactingBricksBelow;
 	std::vector<Brick*> contactingBricksAbove;
 	int zMin;
+	int depth = -1;
+	int chainReactionScore = -1;
 
 	Brick(char name, Vec3 start, Vec3 end) : name(name), start(start), end(end) {
 		interpolatedPositions = InterpolateCellPositions(start, end);

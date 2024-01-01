@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <limits>
+#include <algorithm>
 
 struct Extents {
     int xMin = INT_MAX;
@@ -185,8 +186,9 @@ void SettleBricks(std::vector<Brick*>& bricks, Volume& volume) {
     }
 }
 
-void DoPart1(std::vector<Brick*>& bricks) {
+void DoPart1(std::string inputFile) {
 
+    auto bricks = ParseInput(inputFile);
     Volume volume(bricks);    
     SettleBricks(bricks, volume);
 
@@ -225,15 +227,106 @@ void DoPart1(std::vector<Brick*>& bricks) {
     std::cout << "PART 1 ANSWER - How many single bricks could be disintegrated without disturbing the pile?: " << redundantBricks.size() << "\n";
 }
 
-void DoPart2(std::vector<Brick*>& bricks) {
-    // Not yet implemented
+bool AreSupportBricksIncludedInGroup(Brick* focusBrick, std::unordered_set<Brick*> fallingBricks) {
+    bool allContained = true;
+    for (auto belowBrick : focusBrick->contactingBricksBelow) {
+        if (!fallingBricks.contains(belowBrick)) {
+            allContained = false;
+            break;
+        }
+    }
+    return allContained;
+}
+
+long long CalculateChainReactionForBrick(Brick* focusBrick, std::unordered_set<Brick*>& fallingBricks) {
+
+   // if (focusBrick->chainReactionScore != -1)
+     //   return focusBrick->chainReactionScore;
+
+    long long chainReactionCount = 0;
+    
+    std::unordered_set<Brick*> newlyFallingBricks;
+    for (auto brickAbove : focusBrick->contactingBricksAbove) {
+        if (AreSupportBricksIncludedInGroup(brickAbove, fallingBricks)) {
+            fallingBricks.insert(brickAbove);
+            chainReactionCount++;
+            newlyFallingBricks.insert(brickAbove);
+        }
+    }   
+
+    for (auto newlyFallingBrick : newlyFallingBricks) {
+        chainReactionCount += CalculateChainReactionForBrick(newlyFallingBrick, fallingBricks);
+    }
+
+    focusBrick->chainReactionScore = chainReactionCount;
+    return chainReactionCount;
+}
+
+int CalculateDepth(Brick* brick) {
+    int depth = 0;
+    
+    if (brick->contactingBricksAbove.size() == 0) {
+        brick->depth = 0;
+        return brick->depth;
+    }
+
+    int maxDepth = 0;
+    for (auto brickAbove : brick->contactingBricksAbove) {
+        int depth = -1;
+        if (brickAbove->depth == -1)
+            depth = CalculateDepth(brickAbove);
+        else
+            depth = brickAbove->depth;
+
+        if (depth + 1 > maxDepth)
+            maxDepth = depth + 1;
+    }
+
+    brick->depth = maxDepth;
+    return brick->depth;
+}
+
+void DoPart2(std::string inputFile) {
+    auto bricks = ParseInput(inputFile);
+    Volume volume(bricks);
+    SettleBricks(bricks, volume);
+
+    // Connect bricks to their above/below neighbours
+    for (auto focusBrick : bricks) {
+        auto bricksBelow = volume.GetBricksBelowBrick(focusBrick);
+        for (auto brickBelow : bricksBelow) {
+            brickBelow->contactingBricksAbove.push_back(focusBrick);
+            focusBrick->contactingBricksBelow.push_back(brickBelow);
+        }
+    }
+
+    // Calculate the depth of each brick
+    for (auto brick : bricks) {
+        CalculateDepth(brick);
+    }
+
+    // Sort bricks by depth, least deep first
+    std::sort(bricks.begin(), bricks.end(), [](Brick* brickA, Brick* brickB) {return brickA->depth < brickB->depth; });
+
+    // For each brick, calculate how many bricks would start falling if the focus brick was disintegrated
+    long long sumOfChainReactions = 0;
+    long brickIndex = 0;
+    for (auto brick : bricks) {
+        std::cout << "Calculating chain score for brick: " << brick->name << ", brickIndex: " << brickIndex << "\n";
+        std::unordered_set<Brick*> fallingBricks{ brick };
+        CalculateChainReactionForBrick(brick, fallingBricks);
+        sumOfChainReactions += fallingBricks.size() - 1;
+        brickIndex++;
+    }
+      
+    std::cout << "PART 2 ANSWER - Sum of chain reactions: " << sumOfChainReactions << "\n";
 }
 
 int main()
 {
     std::cout << "Advent of Code - Day 21!\n";
 
-    auto bricks = ParseInput("input.txt");
-    DoPart1(bricks);
-    DoPart2(bricks);
+    std::string inputFile = "input.txt";
+    DoPart1(inputFile);
+    DoPart2(inputFile);
 }
