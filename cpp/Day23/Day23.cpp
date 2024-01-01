@@ -117,26 +117,26 @@ public:
 
 std::vector<Vec2> NeighbourOffsets{ Vec2(0,-1), Vec2(1,0), Vec2(0,1), Vec2(-1,0) };
 
-std::vector<Candidate> GetValidNeighbours(const Candidate& candidate, const Grid& grid, std::unordered_set<long long> visited) {
+std::vector<Vec2> GetValidNeighbours(const Vec2& position, const Grid& grid, std::unordered_set<long long> visited) {
 
-    auto currentCell = grid.GetAt(candidate.position);
-    std::vector<Candidate> neighbourCandidates;
+    auto currentCell = grid.GetAt(position);
+    std::vector<Vec2> neighbourPositions;
 
     for (const auto& offset : NeighbourOffsets) {        
-        Candidate neighbourCandidate(candidate.position + offset, candidate.distance + 1);
-
+        Vec2 neighbourPosition = position + offset;
+        
         // Can't walk outside of map
-        if(!grid.IsWithinBounds(neighbourCandidate.position))
+        if(!grid.IsWithinBounds(neighbourPosition))
             continue;
 
         // Can't backtrack
-        if (visited.contains(neighbourCandidate.Hash()))
+        if (visited.contains(neighbourPosition.Hash()))
             continue;
 
-        auto neighbour = grid.GetAt(neighbourCandidate.position);
+        auto neighbourCell = grid.GetAt(neighbourPosition);
 
         // Can't walk into forest
-        if (neighbour->terrain == FOREST)
+        if (neighbourCell->terrain == FOREST)
             continue;
 
         if (currentCell->terrain == NORTHSLOPE && offset != NORTH)
@@ -148,11 +148,33 @@ std::vector<Candidate> GetValidNeighbours(const Candidate& candidate, const Grid
         if (currentCell->terrain == WESTSLOPE && offset != WEST)
             continue;
 
-        neighbourCandidates.push_back(neighbourCandidate);
+        neighbourPositions.push_back(neighbourPosition);
     }
 
-    return neighbourCandidates;
+    return neighbourPositions;
 }
+
+class Walker {
+public:
+    Vec2 position;
+    int steps;
+    std::unordered_set<long long> visited;
+
+    Walker(Vec2 position, int steps, std::unordered_set<long long> visited) : position(position), steps(steps), visited(visited) {
+        this->visited.insert(position.Hash());
+    }
+
+    void MoveTo(Vec2 nextPosition) {
+        position = nextPosition;
+        steps++;
+        visited.insert(nextPosition.Hash());
+    }
+
+    Walker* Clone() {
+        Walker* newWalker = new Walker(position, steps, visited);
+        return newWalker;
+    }
+};
 
 void DoPart1(const std::string& fileName) {
     Grid grid = ParseInput(fileName);
@@ -169,33 +191,59 @@ void DoPart1(const std::string& fileName) {
     std::priority_queue<Candidate, std::vector<Candidate>, CustomComparison> frontier;
     std::unordered_set<long long> visited;
 
-    Candidate longestPath;
-    Candidate startCandidate(startPosition, 0);
-    visited.insert(startCandidate.Hash());
-    frontier.push(startCandidate);
-    while (frontier.size() > 0) {
-        Candidate focusCandidate = frontier.top();
-        frontier.pop();
-        
-        if (focusCandidate.position == endPosition) {
-            longestPath = focusCandidate;
-            break;
+    std::vector<Walker*> allWalkers{ new Walker(startPosition, 0, visited) };
+    std::queue<Walker*> activeWalkers;
+    for (auto walker : allWalkers)
+        activeWalkers.push(walker);
+     
+    while (activeWalkers.size() > 0) {
+        Walker* focusWalker = activeWalkers.front();
+
+        if (focusWalker->position == endPosition) {
+            activeWalkers.pop();
+            continue;
         }
 
-        auto validNeighbours = GetValidNeighbours(focusCandidate, grid, visited);
-        for (const auto& neighbourCandidate : validNeighbours) {
-            frontier.push(neighbourCandidate);
-            visited.insert(neighbourCandidate.Hash());
+        auto validNeighbours = GetValidNeighbours(focusWalker->position, grid, focusWalker->visited);
+
+        if (validNeighbours.size() == 0) {
+            activeWalkers.pop();
+            
+            std::remove_if(allWalkers.begin(), allWalkers.end(), [&focusWalker](Walker* walker) {return walker == focusWalker; });
+            continue;
+        }
+        else if (validNeighbours.size() == 1) {
+            focusWalker->MoveTo(validNeighbours[0]);
+            continue;
+        }
+        else {
+            for (int i = 1; i < validNeighbours.size(); i++) {
+                Walker* newWalker = focusWalker->Clone();
+                newWalker->MoveTo(validNeighbours[i]);
+                activeWalkers.push(newWalker);
+                allWalkers.push_back(newWalker);
+            }
+            focusWalker->MoveTo(validNeighbours[0]);
         }
     }
 
-    std::cout << "PART 1 ANSWER - Longest walking path: " << longestPath.distance << "\n";
+    int longestPath = allWalkers[0]->steps;
+    Walker* longestWalker = allWalkers[0];
+    for (int i = 1; i < allWalkers.size(); i++) {
+        Walker* testWalker = allWalkers[i];
+        if (testWalker->steps > longestPath) {
+            longestPath = testWalker->steps;
+            longestWalker = testWalker;
+        }
+    }
+
+    std::cout << "PART 1 ANSWER - Longest walking path: " << longestWalker->steps << "\n";
 }
 
 int main()
 {
     std::cout << "Advent of Code - Day 23!\n";
 
-    std::string inputFile = "test_input.txt";
+    std::string inputFile = "input.txt";
     DoPart1(inputFile);
 }
