@@ -105,25 +105,35 @@ Grid ParseInput(const std::string& fileName) {
     return grid;
 }
 
+struct Candidate {
+public:
+    Vec2 position;
+    int distance;
+
+    long long Hash() const {
+        return position.x + (position.y << 8) + (distance << 16);
+    }
+};
+
 std::vector<Vec2> NeighbourOffsets{ Vec2(0,-1), Vec2(1,0), Vec2(0,1), Vec2(-1,0) };
 
-std::vector<Vec2> GetValidNeighbours(const Vec2& position, const Grid& grid, std::unordered_map<std::size_t, long long> visited) {
+std::vector<Candidate> GetValidNeighbours(const Candidate& candidate, const Grid& grid, std::unordered_set<long long> visited) {
 
-    auto currentCell = grid.GetAt(position);
-    std::vector<Vec2> neighbourPositions;
+    auto currentCell = grid.GetAt(candidate.position);
+    std::vector<Candidate> neighbourCandidates;
 
-    for (const auto& offset : NeighbourOffsets) {
-        Vec2 neighbourPosition = position + offset;
+    for (const auto& offset : NeighbourOffsets) {        
+        Candidate neighbourCandidate(candidate.position + offset, candidate.distance + 1);
 
         // Can't walk outside of map
-        if(!grid.IsWithinBounds(neighbourPosition))
+        if(!grid.IsWithinBounds(neighbourCandidate.position))
             continue;
 
         // Can't backtrack
-        if (visited.contains(neighbourPosition.Hash()))
+        if (visited.contains(neighbourCandidate.Hash()))
             continue;
 
-        auto neighbour = grid.GetAt(neighbourPosition);
+        auto neighbour = grid.GetAt(neighbourCandidate.position);
 
         // Can't walk into forest
         if (neighbour->terrain == FOREST)
@@ -138,17 +148,11 @@ std::vector<Vec2> GetValidNeighbours(const Vec2& position, const Grid& grid, std
         if (currentCell->terrain == WESTSLOPE && offset != WEST)
             continue;
 
-        neighbourPositions.push_back(neighbourPosition);
+        neighbourCandidates.push_back(neighbourCandidate);
     }
 
-    return neighbourPositions;
+    return neighbourCandidates;
 }
-
-struct Candidate {
-public:
-    Vec2 position;
-    int distance;
-};
 
 void DoPart1(const std::string& fileName) {
     Grid grid = ParseInput(fileName);
@@ -163,25 +167,25 @@ void DoPart1(const std::string& fileName) {
         bool operator()(const Candidate lhs, const Candidate rhs) const { return lhs.distance < rhs.distance; }
     };
     std::priority_queue<Candidate, std::vector<Candidate>, CustomComparison> frontier;
-    std::unordered_map<std::size_t, long long> visited;
+    std::unordered_set<long long> visited;
 
     Candidate longestPath;
-    visited[startPosition.Hash()] =  0;
-    frontier.push(Candidate(startPosition,0));
+    Candidate startCandidate(startPosition, 0);
+    visited.insert(startCandidate.Hash());
+    frontier.push(startCandidate);
     while (frontier.size() > 0) {
         Candidate focusCandidate = frontier.top();
         frontier.pop();
-        long long focusDistance = visited.at(focusCandidate.position.Hash());
-
+        
         if (focusCandidate.position == endPosition) {
             longestPath = focusCandidate;
             break;
         }
 
-        auto validNeighbours = GetValidNeighbours(focusCandidate.position, grid, visited);
-        for (const auto& neighbour : validNeighbours) {
-            frontier.push(Candidate(neighbour, focusCandidate.distance + 1));
-            visited[neighbour.Hash()] = focusDistance + 1;
+        auto validNeighbours = GetValidNeighbours(focusCandidate, grid, visited);
+        for (const auto& neighbourCandidate : validNeighbours) {
+            frontier.push(neighbourCandidate);
+            visited.insert(neighbourCandidate.Hash());
         }
     }
 
