@@ -324,7 +324,7 @@ void DoPart2(std::string inputFile) {
 
 int main()
 {
-    std::cout << "Advent of Code - Day 21!\n";
+    std::cout << "Advent of Code - Day 22!\n";
 
     std::string inputFile = "input.txt";
     DoPart1(inputFile);
