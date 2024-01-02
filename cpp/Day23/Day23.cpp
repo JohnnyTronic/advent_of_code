@@ -157,7 +157,7 @@ void DoPart2(const std::string& fileName) {
     Node* startNode = nodeGraph.nodes[startPosition];
     Node* endNode = nodeGraph.nodes[endPosition];
         
-    std::unordered_set<Node*, NodeHashFunction> visitedNodes;
+    std::unordered_set<Node*, NodeHashFunction> visitedNodes{ startNode };
     GraphWalker* firstGraphWalker = new GraphWalker(startNode, visitedNodes, 0);
     std::vector<GraphWalker*> finishedGraphWalkers{};
     std::queue<GraphWalker*> activeGraphWalkers;

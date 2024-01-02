@@ -36,7 +36,15 @@ public:
             else {
                 // We're at a junction...
                 if (nodes.contains(graphMapper->position)) {
-                    // We've already been to this node before
+                    // We've already been to this node before...
+                    // Is there an edge back to where we came from?
+                    auto endNode = nodes[graphMapper->position];
+                    if (!endNode->IsConnectedTo(graphMapper->previousNode)) {
+                        Edge* newEdge = new Edge(graphMapper->previousNode, endNode, graphMapper->distance);
+                        endNode->edges.push_back(newEdge);
+                        graphMapper->previousNode->edges.push_back(newEdge);
+                    }
+
                     graphMappers.pop();
                     delete graphMapper;
                     continue;
@@ -49,6 +57,7 @@ public:
                     edges.insert({ newEdge->nodeA, newEdge });
                     edges.insert({ newEdge->nodeB, newEdge });
                     newNode->edges.push_back(newEdge);
+                    graphMapper->previousNode->edges.push_back(newEdge);
                     
                     for (auto nextPosition : nextPositions) {
                         GraphMapper* newGraphMapper = new GraphMapper(nextPosition, graphMapper->position, newNode, 1);

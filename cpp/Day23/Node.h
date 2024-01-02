@@ -12,6 +12,8 @@ struct Node {
     Node(Vec2 position) : position(position) {};
 
     bool operator==(const Node& other);    
+
+    bool IsConnectedTo(Node* otherNode);
 };
 
 struct Edge {

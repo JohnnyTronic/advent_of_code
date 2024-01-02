@@ -4,6 +4,15 @@ bool Node::operator==(const Node& other) {
     return position.x == other.position.x && position.y == other.position.y;
 }
 
+bool Node::IsConnectedTo(Node* otherNode) {
+    for (auto edge : edges) {
+        auto farNode = edge->GetOther(this);
+        if (farNode == otherNode)
+            return true;
+    }
+    return false;
+}
+
 Node* Edge::GetOther(Node* start) {
     return start == nodeA ? nodeB : nodeA;
 }
