@@ -159,19 +159,23 @@ void DoPart2(const std::string& fileName) {
         
     std::unordered_set<Node*, NodeHashFunction> visitedNodes{ startNode };
     GraphWalker* firstGraphWalker = new GraphWalker(startNode, visitedNodes, 0);
-    std::vector<GraphWalker*> finishedGraphWalkers{};
+    //std::vector<GraphWalker*> finishedGraphWalkers{};
     std::queue<GraphWalker*> activeGraphWalkers;
     activeGraphWalkers.push(firstGraphWalker);
     
-    std::vector<Vec2> validNeighbours;   
+    long long longestWalk = 0;
     while (activeGraphWalkers.size() > 0) {
-        //loopCount++;
         GraphWalker* graphWalker = activeGraphWalkers.front();
 
         if (graphWalker->currentNode == endNode) {
+            //finishedGraphWalkers.push_back(graphWalker);
+            if (graphWalker->totalDistance > longestWalk) {
+                longestWalk = graphWalker->totalDistance;
+                std::cout << "New longest walk: " << std::to_string(longestWalk) << "\n";
+            }
+            //std::cout << "Active graph walkers: " << std::to_string(activeGraphWalkers.size()) << ", END POSITION REACHED - " << graphWalker->totalDistance << "\n";
             activeGraphWalkers.pop();
-            finishedGraphWalkers.push_back(graphWalker);
-            std::cout << "Active graph walkers: " << std::to_string(activeGraphWalkers.size()) << ", END POSITION REACHED - " << graphWalker->totalDistance << "\n";
+            delete graphWalker;
             continue;
         }
 
@@ -192,15 +196,16 @@ void DoPart2(const std::string& fileName) {
         graphWalker->TravelAlong(untravelledEdges[0]);
     }
 
-    GraphWalker* longestGraphWalker = finishedGraphWalkers[0];
+    /*GraphWalker* longestGraphWalker = finishedGraphWalkers[0];
     for (int i = 1; i < finishedGraphWalkers.size(); i++) {
         GraphWalker* testGraphWalker = finishedGraphWalkers[i];
         if (testGraphWalker->totalDistance > longestGraphWalker->totalDistance) {            
             longestGraphWalker = testGraphWalker;
         }
-    }
+    }*/
 
-    std::cout << "PART 2 ANSWER - Longest walking path without slippery slopes: " << longestGraphWalker->totalDistance << "\n";
+    //std::cout << "PART 2 ANSWER - Longest walking path without slippery slopes: " << longestGraphWalker->totalDistance << "\n";
+    std::cout << "PART 2 ANSWER - Longest walking path without slippery slopes: " << longestWalk << "\n";
 }
 
 void TestHashing(const std::string& inputFile) {
@@ -220,7 +225,7 @@ int main()
 {
     std::cout << "Advent of Code - Day 23!\n";
 
-    std::string inputFile = "test_input.txt";
+    std::string inputFile = "input.txt";
     TestHashing(inputFile);
     //DoPart1(inputFile);
     DoPart2(inputFile);
