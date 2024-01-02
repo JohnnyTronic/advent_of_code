@@ -130,12 +130,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Day23.cpp" />
+    <ClCompile Include="Node.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
     <Text Include="test_input.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EdgeHashFunction.h" />
+    <ClInclude Include="GraphWalker.h" />
+    <ClInclude Include="NodeGraph.h" />
+    <ClInclude Include="GraphMapper.h" />
+    <ClInclude Include="Grid.h" />
+    <ClInclude Include="GridWalker.h" />
+    <ClInclude Include="Node.h" />
+    <ClInclude Include="NodeHashFunction.h" />
+    <ClInclude Include="Terrain.h" />
     <ClInclude Include="Vec2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

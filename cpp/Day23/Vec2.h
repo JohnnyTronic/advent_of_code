@@ -4,13 +4,19 @@
 
 class Vec2 {
 public:
-    long long x{};
-    long long y{};
+    short x{};
+    short y{};
 
-    Vec2(long long x = 0, long long y = 0) : x(x), y(y) {}
+    Vec2(short x = 0, short y = 0) : x(x), y(y) {}
+        
+    struct HashFunction {
+        std::size_t operator()(const Vec2& v) const {
+            return static_cast<std::size_t>(v.x) + (static_cast<std::size_t>(v.y) << 16);
+        }
+    };
 
-    std::size_t Hash() const {
-        return x + (y << 16);
+    bool operator==(const Vec2& rhs) const {
+        return this->x == rhs.x && this->y == rhs.y;
     }
 };
 
@@ -20,10 +26,6 @@ static Vec2 operator+(const Vec2& lhs, const Vec2& rhs) {
 
 static Vec2 operator-(Vec2 lhs, Vec2 rhs) {
     return Vec2(lhs.x - rhs.x, lhs.y - rhs.y);
-}
-
-static bool operator==(const Vec2& lhs, const Vec2& rhs) {
-    return lhs.x == rhs.x && lhs.y == rhs.y;
 }
 
 static bool operator!=(const Vec2& lhs, const Vec2& rhs) {
