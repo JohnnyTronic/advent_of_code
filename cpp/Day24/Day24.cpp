@@ -1,4 +1,4 @@
-#include "Vec2.h"
+#include "Vec3.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -29,12 +29,12 @@ std::vector<Hailstone*> ParseInput(const std::string& fileName) {
         if (!success)
             throw "Regex failure";
 
-        long long pX = std::stoll(match[1].str());
-        long long pY = std::stoll(match[2].str());
-        long long pZ = std::stoll(match[3].str());
-        long long vX = std::stoll(match[4].str());
-        long long vY = std::stoll(match[5].str());
-        long long vZ = std::stoll(match[6].str());
+        double pX = std::stoll(match[1].str());
+        double pY = std::stoll(match[2].str());
+        double pZ = std::stoll(match[3].str());
+        double vX = std::stoll(match[4].str());
+        double vY = std::stoll(match[5].str());
+        double vZ = std::stoll(match[6].str());
       
         Hailstone* hailstone = new Hailstone(Vec3(pX, pY, pZ), Vec3(vX, vY, vZ));
         hailstones.push_back(hailstone);
@@ -43,6 +43,11 @@ std::vector<Hailstone*> ParseInput(const std::string& fileName) {
     return hailstones;
 }
 
+double DotProduct(const Vec3& lhs, const Vec3& rhs) {
+    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+}
+
+
 enum IntersectionResult {
     NEVER,    
     BEFORE,
@@ -50,7 +55,7 @@ enum IntersectionResult {
     OUTSIDEAREA
 };
 
-IntersectionResult TestForIntersection2D(Hailstone* A, Hailstone* B, long long boundsMin, long long boundsMax) {
+IntersectionResult TestForLineIntersection2D(Hailstone* A, Hailstone* B, double boundsMin, double boundsMax) {
     // Based on https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
 
     Vec3 A2 = (A->position + A->velocity);
@@ -76,13 +81,52 @@ IntersectionResult TestForIntersection2D(Hailstone* A, Hailstone* B, long long b
     double Px = PxNumerator / PxDenominator;
     double Py = PyNumerator / PyDenominator;
 
-    if(Px >= boundsMin && Px <= boundsMax && Py >= boundsMin && Py <= boundsMax)
-        return INSIDEAREA;
+    if (Px >= boundsMin && Px <= boundsMax && Py >= boundsMin && Py <= boundsMax) {
+        Vec3 P(Px, Py, 0);
+        Vec3 APos2D(A->position.x, A->position.y, 0);
+        Vec3 AVel2D(A->velocity.x, A->velocity.y, 0);
+        Vec3 AtoP = (P - APos2D).AsNormal();        
+        Vec3 AVelUnit = AVel2D.AsNormal();
+        double PdotA = DotProduct(AtoP, AVelUnit);
+
+        Vec3 BPos2D(B->position.x, B->position.y, 0);
+        Vec3 BVel2D(B->velocity.x, B->velocity.y, 0);
+        Vec3 BtoP = (P - BPos2D).AsNormal();
+        Vec3 BVelUnit = BVel2D.AsNormal();
+        double PdotB = DotProduct(BtoP, BVelUnit);
+        if (PdotA > 0 && PdotB > 0)
+            return INSIDEAREA;
+        else
+            return BEFORE;          
+    }
 
     return OUTSIDEAREA;
 }
 
-void DoPart1(const std::vector<Hailstone*>& hailstones, long long boundsMin, long long boundsMax) {
+IntersectionResult TestForRayIntersection2D(Hailstone* A, Hailstone* B, double boundsMin, double boundsMax) {
+    double dx = B->position.x - A->position.x;
+    double dy = B->position.y - A->position.y;
+    double det = B->velocity.x * A->velocity.y - B->velocity.y * A->velocity.x;
+    if (abs(det) < std::numeric_limits<double>::epsilon())
+        return NEVER;
+    double u = (dy * B->velocity.x - dx * B->velocity.y) / det;
+    double v = (dy * A->velocity.x - dx * A->velocity.y) / det;
+
+    double pX = A->position.x + A->velocity.x * u;
+    double pY = A->position.y + A->velocity.y * u;
+    double pXB = B->position.x + B->velocity.x * v;
+    double pYB = B->position.y + B->velocity.y * v;
+
+    if (pX >= boundsMin && pX <= boundsMax && pY >= boundsMin && pY <= boundsMax) {
+        if (u < 0 || v < 0)
+            return BEFORE;
+        return INSIDEAREA;
+    }
+
+    return OUTSIDEAREA;
+}
+
+void DoPart1(const std::vector<Hailstone*>& hailstones, double boundsMin, double boundsMax) {
     long testAreaIntersections = 0;  
 
     for (int i = 0; i < hailstones.size() - 1; i++) {
@@ -90,13 +134,26 @@ void DoPart1(const std::vector<Hailstone*>& hailstones, long long boundsMin, lon
             Hailstone* stoneA = hailstones[i];
             Hailstone* stoneB = hailstones[j];
 
-            IntersectionResult intersectionResult = TestForIntersection2D(stoneA, stoneB, boundsMin, boundsMax);
-            if (intersectionResult == INSIDEAREA)
+            IntersectionResult intersectionResult = TestForLineIntersection2D(stoneA, stoneB, boundsMin, boundsMax);
+            IntersectionResult rayIntersectionResult = TestForRayIntersection2D(stoneA, stoneB, boundsMin, boundsMax);
+            if (rayIntersectionResult == INSIDEAREA)
                 testAreaIntersections++;
+
+            // Inside
+            // Inside
+            // Outside
+            // PastA
+            // Never
+            // Outside
+            // PastBoth
+            // Outside
+            // PastB
+            // PastBoth
         }
     }
 
     std::cout << "PART 1 ANSWER - How many intersections within the test area?: " << testAreaIntersections << "\n";
+    //Incorrect Answers: 29143 (too high)
 }
 
 void DoPart2(const std::vector<Hailstone*>& hailstones) {
@@ -108,9 +165,9 @@ int main()
     std::cout << "Advent of Code - Day 24!\n";
 
     std::string fileName = "input.txt";
-    long long boundsMin = 200000000000000;
-    long long boundsMax = 400000000000000;
-    if (true) {
+    double boundsMin = 200000000000000;
+    double boundsMax = 400000000000000;
+    if (false) {
         fileName = "test_input.txt";
         boundsMin = 7;
         boundsMax = 27;

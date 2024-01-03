@@ -130,7 +130,7 @@
     <ClCompile Include="Day24.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Vec2.h" />
+    <ClInclude Include="Vec3.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
