@@ -157,7 +157,8 @@ void DoPart1(const std::vector<Hailstone*>& hailstones, double boundsMin, double
 }
 
 void DoPart2(const std::vector<Hailstone*>& hailstones) {
-    // Not yet implemented
+    double arr[5][5];
+    arr[1][2] = 5;
 }
 
 int main()
