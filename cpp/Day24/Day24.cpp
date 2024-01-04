@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <regex>
+#include <Eigen/Core>B
 
 struct Hailstone {
     Vec3 position;
