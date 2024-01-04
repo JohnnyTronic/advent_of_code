@@ -8,6 +8,7 @@
 #include <set>
 #include <unordered_set>
 #include <queue>
+#include <format>$
 
 class Edge;
 
@@ -274,6 +275,31 @@ void DeleteEdgeFromNodeGraph(Edge* edge, NodeGraph* nodeGraph) {
     std::erase(edge->nodeB->edges, edge);
 }
 
+auto GlobalMinCut(std::vector<std::vector<int>>& mat) {
+    std::pair<int, std::vector<int>> best = { std::numeric_limits<int>::max(), {} };
+    int n = mat.size();
+    std::vector<std::vector<int>> co(n);
+
+    for (int i = 0; i < n; i++)
+        co[i] = { i };
+
+    for (int ph = 1; ph < n; ph++) {
+        std::vector<int> w = mat[0];
+        size_t s = 0, t = 0;
+        for (int it = 0; it < n - ph; it++) { // O(V^2) -> O(E log V) with prio. queue
+            w[t] = std::numeric_limits<int>::min();
+            s = t, t = std::max_element(w.begin(), w.end()) - w.begin();
+            for (int i = 0; i < n; i++) w[i] += mat[t][i];
+        }
+        best = min(best, { w[t] - mat[t][t], co[t] });
+        co[s].insert(co[s].end(), co[t].begin(), co[t].end());
+        for (int i = 0; i < n; i++) mat[s][i] += mat[t][i];
+        for (int i = 0; i < n; i++) mat[i][s] = mat[s][i];
+        mat[0][t] = std::numeric_limits<int>::min();
+    }
+    return best;    
+}
+
 void DoPart1(NodeGraph* nodeGraph) {    
     auto edge1 = FindMostTravelledEdge(nodeGraph);
     DeleteEdgeFromNodeGraph(edge1, nodeGraph);    
@@ -305,9 +331,39 @@ int main()
         fileName = "test_input.txt";    
     }
 
-    auto nodeGraph = ParseInput(fileName);
+    std::ifstream in(fileName);
+    std::string line;
+    std::vector<std::pair<int, int>> connections;
+    std::map<std::string, int> nameMap;
+
+    auto GetIndex = [&nameMap](const std::string& s) {
+        if (nameMap.find(s) != nameMap.cend())
+            return nameMap[s];
+        int index = nameMap.size();
+        nameMap[s] = index;
+        return index;
+        };
+
+    while (std::getline(in, line)) {
+        std::stringstream ss(line);
+        std::string name;
+        ss >> name;
+        name = name.substr(0, name.size() - 1);
+        int baseIndex = GetIndex(name);
+        while (ss >> name)
+            connections.emplace_back(baseIndex, GetIndex(name));
+    }
+
+    std::vector<std::vector<int>> adj(nameMap.size(), std::vector<int>(nameMap.size(), 0));
+    for (const auto& p : connections)
+        adj[p.first][p.second] = adj[p.second][p.first] = 1;
+
+    auto result = GlobalMinCut(adj);
+    std::cout << std::format("Part 1: {} \n", result.second.size() * (nameMap.size() - result.second.size()));
+
+    //auto nodeGraph = ParseInput(fileName);
     //nodeGraph->ListData();
 
-    DoPart1(nodeGraph);
+    //DoPart1(nodeGraph);
     //DoPart2(nodeGraph);
 }
