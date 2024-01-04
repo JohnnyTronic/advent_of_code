@@ -4,6 +4,7 @@
 #include <vector>
 #include <regex>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <unordered_set>
 #include <queue>
@@ -113,6 +114,31 @@ struct WalkerState {
     int stepsSoFar = 0;
     Node* currentNode;
     Edge* previousEdge;
+    WalkerState* previousState;
+
+    WalkerState(int stepsSoFar, Node* currentNode, Edge* previousEdge, WalkerState* previousState) :stepsSoFar(stepsSoFar), currentNode(currentNode), previousEdge(previousEdge), previousState(previousState) {};
+
+    void GetUntravelledEdges(std::vector<Edge*>& buffer) {
+        buffer.clear();
+        for (auto edge : currentNode->edges) {
+            Node* farNode = edge->GetOther(currentNode);
+            if (!HasPreviouslyVisited(farNode)) {
+                buffer.push_back(edge);
+            }
+        }
+    }
+
+    bool HasPreviouslyVisited(Node* node) {
+        WalkerState* state = this;
+        while (state != nullptr) {
+            if (state->currentNode == node)
+                return true;
+
+            state = state->previousState;
+        }
+
+        return false;
+    }
 };
 
 struct Walker {
@@ -126,15 +152,14 @@ struct Walker {
         visitedNodes.insert(node);
     };
 
-    std::vector<Edge*> GetUntravelledEdges() {
-        std::vector<Edge*> untravelledEdges;
+    void GetUntravelledEdges(std::vector<Edge*>& buffer) {
+        buffer.clear();
         for (auto edge : node->edges) {
             auto otherNode = edge->GetOther(node);
             if (!visitedNodes.contains(otherNode)) {
-                untravelledEdges.push_back(edge);
+                buffer.push_back(edge);
             }
-        }
-        return untravelledEdges;
+        }        
     }
 
     void Travel(Edge* edge) {
@@ -155,36 +180,36 @@ struct Walker {
     }
 };
 
-std::vector<Walker*> FindAllPaths(Node* start, Node* end, NodeGraph* nodeGraph) {
-    Walker* firstWalker = new Walker(start);
+std::vector<WalkerState*> FindAllPaths(Node* start, Node* end, NodeGraph* nodeGraph) {
    
-    std::queue<Walker*> activeWalkers;
-    std::vector<Walker*> finishedWalkers;
-    activeWalkers.push(firstWalker);
-    while (activeWalkers.size() > 0) {
-        Walker* walker = activeWalkers.front();
+    std::queue<WalkerState*> activeWalkers;
+    std::vector<WalkerState*> finishedWalkers;
 
-        if (walker->node == end) {
-            activeWalkers.pop();
+    WalkerState* firstWalker = new WalkerState(0, start, nullptr, nullptr);
+    activeWalkers.push(firstWalker);
+
+    std::vector<Edge*> untravelledEdges;
+    while (activeWalkers.size() > 0) {
+        WalkerState* walker = activeWalkers.front();
+        activeWalkers.pop();
+
+        if (walker->currentNode == end) {
             finishedWalkers.push_back(walker);
             continue;
         }
 
-        auto untravelledEdges = walker->GetUntravelledEdges();
+        walker->GetUntravelledEdges(untravelledEdges);
         if (untravelledEdges.size() == 0) {
-            // Dead end
-            activeWalkers.pop();
+            // Dead end            
             delete walker;
             continue;
         }
 
-        for (int i = 1; i < untravelledEdges.size(); i++) {
-            Walker* clone = walker->Clone();
-            Edge* edge = untravelledEdges[i];
-            clone->Travel(edge);
-            activeWalkers.push(clone);
-        }
-        walker->Travel(untravelledEdges[0]);       
+        for (auto untravelledEdge : untravelledEdges) {            
+            Node* farNode = untravelledEdge->GetOther(walker->currentNode);
+            WalkerState* state = new WalkerState(walker->stepsSoFar + 1, farNode, untravelledEdge, walker);            
+            activeWalkers.push(state);
+        }               
     }
     return finishedWalkers;
 }
@@ -215,17 +240,20 @@ Edge* FindMostTravelledEdge(NodeGraph* nodeGraph) {
         nodes.push_back(value);
     }
 
-    std::map<Edge*, int> edgeScores;
+    std::unordered_map<Edge*, int> edgeScores;
     for (int i = 0; i < nodes.size() - 1; i++) {
         for (int j = i + 1; j < nodes.size(); j++) {
             Node* start = nodes[i];
             Node* end = nodes[j];
 
-            auto allWalkers = FindAllPaths(start, end, nodeGraph);
-            for (const auto walker : allWalkers) {
-                for (const auto edge : walker->travelledEdges) {                    
-                    edgeScores[edge] += 1;
-                }
+            auto allWalkerStates = FindAllPaths(start, end, nodeGraph);
+            for (const auto walkerState : allWalkerStates) {
+                auto state = walkerState;
+                while (state != nullptr) {
+                    if(state->previousEdge != nullptr)
+                        edgeScores[state->previousEdge] += 1;
+                    state = state->previousState;
+                }                
             }
         }
     }
