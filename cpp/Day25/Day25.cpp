@@ -4,6 +4,7 @@
 #include <vector>
 #include <regex>
 #include <map>
+#include <set>
 #include <unordered_set>
 #include <queue>
 
@@ -27,8 +28,13 @@ public:
     Node* GetOther(Node* start) {
         if (start == nodeA)
             return nodeB;
+        if (start == nodeB)
+            return nodeA;
+        throw "Edge does not contain node: " + start->label;
+    }
 
-        return nodeA;
+    std::string GetStringKey() {
+        return nodeA->label + nodeB->label;
     }
 };
 
@@ -36,6 +42,18 @@ class NodeGraph {
 public:
     std::map<std::string, Node*> nodes;
     std::vector<Edge*> edges;
+
+    void ListData() {
+        std::cout << "---Nodes---\n";
+        for (auto node : nodes) {
+            std::cout << node.first << "\n";
+        };
+
+        std::cout << "---Edges---\n";
+        for (auto edge : edges) {
+            std::cout << edge->nodeA->label << "-" << edge->nodeB->label << "\n";
+        }
+    }
 };
 
 NodeGraph* ParseInput(const std::string& fileName) {
@@ -91,54 +109,159 @@ NodeGraph* ParseInput(const std::string& fileName) {
     return nodeGraph;
 }
 
-int BreadthFirstNodeCount(NodeGraph* nodeGraph, std::unordered_set<Edge*> edgeBlacklist) {
-    std::unordered_set<Node*> visited;
-    std::queue<Node*> frontier;
-    auto startNode = nodeGraph->nodes.begin()->second;
-    frontier.push(startNode);
-    while (frontier.size() > 0) {
-        Node* node = frontier.front();
-        frontier.pop();
-        if (visited.contains(node))
-            continue;
-        visited.insert(node);
+struct WalkerState {
+    int stepsSoFar = 0;
+    Node* currentNode;
+    Edge* previousEdge;
+};
+
+struct Walker {
+    int steps = 0;
+    std::set<Node*> visitedNodes;
+    std::set<Edge*> travelledEdges;
+    Node* node;
+
+    Walker() {}
+    Walker(Node* node) : node(node) {
+        visitedNodes.insert(node);
+    };
+
+    std::vector<Edge*> GetUntravelledEdges() {
+        std::vector<Edge*> untravelledEdges;
         for (auto edge : node->edges) {
-            if (edgeBlacklist.contains(edge))
-                continue;
-            frontier.push(edge->GetOther(node));
+            auto otherNode = edge->GetOther(node);
+            if (!visitedNodes.contains(otherNode)) {
+                untravelledEdges.push_back(edge);
+            }
         }
+        return untravelledEdges;
     }
-    return visited.size();
+
+    void Travel(Edge* edge) {
+        Node* nextNode = edge->GetOther(node);
+        node = nextNode;
+        steps++;
+        visitedNodes.insert(nextNode);
+        travelledEdges.insert(edge);
+    }
+
+    Walker* Clone() {
+        Walker* clone = new Walker();
+        clone->steps = steps;
+        clone->visitedNodes = visitedNodes;
+        clone->travelledEdges = travelledEdges;
+        clone->node = node;
+        return clone;
+    }
+};
+
+std::vector<Walker*> FindAllPaths(Node* start, Node* end, NodeGraph* nodeGraph) {
+    Walker* firstWalker = new Walker(start);
+   
+    std::queue<Walker*> activeWalkers;
+    std::vector<Walker*> finishedWalkers;
+    activeWalkers.push(firstWalker);
+    while (activeWalkers.size() > 0) {
+        Walker* walker = activeWalkers.front();
+
+        if (walker->node == end) {
+            activeWalkers.pop();
+            finishedWalkers.push_back(walker);
+            continue;
+        }
+
+        auto untravelledEdges = walker->GetUntravelledEdges();
+        if (untravelledEdges.size() == 0) {
+            // Dead end
+            activeWalkers.pop();
+            delete walker;
+            continue;
+        }
+
+        for (int i = 1; i < untravelledEdges.size(); i++) {
+            Walker* clone = walker->Clone();
+            Edge* edge = untravelledEdges[i];
+            clone->Travel(edge);
+            activeWalkers.push(clone);
+        }
+        walker->Travel(untravelledEdges[0]);       
+    }
+    return finishedWalkers;
 }
 
-void DoPart1(NodeGraph* nodeGraph) {
+int CountNodesConnectedTo(Node* node) {
+    std::unordered_set<Node*> visitedNodes;
+    std::queue<Node*> frontier;
+    frontier.push(node);
+    while (frontier.size() > 0) {
+        Node* focusNode = frontier.front();
+        frontier.pop();
+        visitedNodes.insert(focusNode);
+        for (auto neighbour : focusNode->edges)
+        {
+            Node* otherNode = neighbour->GetOther(focusNode);
+            if (visitedNodes.contains(otherNode))
+                continue;
+            frontier.push(otherNode);
+        }
+    }
 
-    int edgeCount = nodeGraph->edges.size();
-    std::unordered_set<Edge*> edgeBlacklist;
-    for (int i = 0; i < edgeCount - 2; i++) {
-        std::cout << "i: " << i << " of " << edgeCount << "\n";
-        for (int j = 1; j < edgeCount - 1; j++) {
-            for (int k = 2; k < edgeCount; k++) {
-                edgeBlacklist.clear();
-                Edge* edgeA = nodeGraph->edges.at(i);
-                Edge* edgeB = nodeGraph->edges.at(j);
-                Edge* edgeC = nodeGraph->edges.at(k);
-                edgeBlacklist.insert({ edgeA, edgeB, edgeC});
+    return visitedNodes.size();
+}
 
-                int nodeCount = BreadthFirstNodeCount(nodeGraph, edgeBlacklist);
-                if (nodeCount < nodeGraph->nodes.size()) {
-                    int otherNodeCount = nodeGraph->nodes.size() - nodeCount;
-                    double product = nodeCount * otherNodeCount;
-                    std::cout << "PART 1 ANSWER - Product of size fo the two disjoint graphs: " << product << ", Blacklisted Edges: ";
-                    for (auto edge : edgeBlacklist) {
-                        std::cout << edge->nodeA->label << ":" << edge->nodeB->label << ", ";
-                    }
-                    std::cout << "\n";
-                    return;
+Edge* FindMostTravelledEdge(NodeGraph* nodeGraph) {
+    std::vector<Node*> nodes;
+    for (auto [key, value] : nodeGraph->nodes) {
+        nodes.push_back(value);
+    }
+
+    std::map<Edge*, int> edgeScores;
+    for (int i = 0; i < nodes.size() - 1; i++) {
+        for (int j = i + 1; j < nodes.size(); j++) {
+            Node* start = nodes[i];
+            Node* end = nodes[j];
+
+            auto allWalkers = FindAllPaths(start, end, nodeGraph);
+            for (const auto walker : allWalkers) {
+                for (const auto edge : walker->travelledEdges) {                    
+                    edgeScores[edge] += 1;
                 }
             }
         }
     }
+
+    Edge* mostTravelledEdge = nodeGraph->edges.front();  
+    for (auto& kvp : edgeScores) {
+        if (kvp.second > edgeScores[mostTravelledEdge]) {
+            mostTravelledEdge = kvp.first;
+        }
+    }
+       
+    return mostTravelledEdge;
+}
+
+void DeleteEdgeFromNodeGraph(Edge* edge, NodeGraph* nodeGraph) {
+    std::erase(nodeGraph->edges, edge);
+    std::erase(edge->nodeA->edges, edge);
+    std::erase(edge->nodeB->edges, edge);
+}
+
+void DoPart1(NodeGraph* nodeGraph) {    
+    auto edge1 = FindMostTravelledEdge(nodeGraph);
+    DeleteEdgeFromNodeGraph(edge1, nodeGraph);    
+ 
+    auto edge2 = FindMostTravelledEdge(nodeGraph);
+    DeleteEdgeFromNodeGraph(edge2, nodeGraph);
+
+    auto edge3 = FindMostTravelledEdge(nodeGraph);
+    DeleteEdgeFromNodeGraph(edge3, nodeGraph);
+
+    auto firstNode = (*nodeGraph->nodes.begin()).second;
+    int netSizeA = CountNodesConnectedTo(firstNode);
+    int netSizeB = nodeGraph->nodes.size() - netSizeA;
+
+    auto productOfTwoNetSizes = netSizeA * netSizeB;
+    std::cout << "PART 1 ANSWER - Product of two disjoint network sizes: " << productOfTwoNetSizes << "\n";
 }
 
 void DoPart2(NodeGraph* nodeGraph) {
@@ -155,7 +278,8 @@ int main()
     }
 
     auto nodeGraph = ParseInput(fileName);
+    //nodeGraph->ListData();
 
     DoPart1(nodeGraph);
-    DoPart2(nodeGraph);
+    //DoPart2(nodeGraph);
 }
