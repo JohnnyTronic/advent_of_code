@@ -18,7 +18,7 @@ struct Sample {
 // }
 
 struct Game {
-    id: i16,
+    id: i32,
     samples: Vec<Sample>,
 }
 
@@ -66,7 +66,7 @@ fn do_part_1(input: &str) -> String {
     for line in input.lines() {
         let (game_label, game_observations) = line.split_once(": ").unwrap();
         let (_, game_number_str) = game_label.split_once(" ").unwrap();
-        let game_number = game_number_str.parse::<i16>().unwrap();
+        let game_number = game_number_str.parse::<i32>().unwrap();
 
         let mut game = Game {
             id: game_number,
@@ -94,12 +94,13 @@ fn do_part_1(input: &str) -> String {
         games.push(game);
     }
 
-    let possible_game_count = games
+    let result: i32 = games
         .iter()
         .filter(|game| game.is_possible_given_limits(max_red, max_green, max_blue))
-        .count();
+        .map(|game| game.id)
+        .sum();
 
-    return possible_game_count.to_string();
+    return result.to_string();
 }
 
 fn do_part_2(input: &str) -> String {
