@@ -14,9 +14,10 @@ pub fn process(input: &str) -> Result<String> {
         right.push(split.next().unwrap().parse::<isize>().unwrap());
     }
 
-    let similarity_sum = left.iter().fold(0, |acc, l| {
-        let match_count = right.iter().filter(|&r| r == l).count();
-        acc + match_count
+    let similarity_sum = left.iter().fold(0isize, |acc, l| {
+        let match_count: isize = right.iter().filter(|&r| r == l).count().try_into().unwrap();
+        let similarity_value = l * match_count;
+        acc + similarity_value
     });
 
     println!("[main end]");
