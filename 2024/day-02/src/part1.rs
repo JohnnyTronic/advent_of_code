@@ -23,7 +23,7 @@ pub fn process(input: &str) -> std::result::Result<String, Error> {
 
         let mut trend = (next_value - target_value).signum();
         target_value = next_value;
-        while let Some(next_value) = numbers.next() {
+        for next_value in numbers {
             delta = next_value - target_value;
             if delta.abs() < 1 || delta.abs() > 3 {
                 println!("Unsafe: out-of-spec delta: {}", delta);
@@ -43,22 +43,6 @@ pub fn process(input: &str) -> std::result::Result<String, Error> {
     }
 
     Ok(safe_report_count.to_string())
-    // left.sort();
-    // right.sort();
-    //
-    // let zipped: Vec<(&isize, &isize)> = left.iter().zip(&right).collect();
-    //
-    // let deltas: Vec<isize> = zipped
-    //     .iter()
-    //     .map(|(&left, &right)| (left - right).abs())
-    //     .collect();
-    //
-    // let sum: isize = deltas.iter().sum();
-    // println!("Final sum: {}", sum);
-    //
-    // println!("[main end]");
-    //
-    // Ok(sum.to_string())
 }
 
 #[cfg(test)]
