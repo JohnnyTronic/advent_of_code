@@ -1,97 +1,73 @@
+use regex::Regex;
 use std::io::Error;
+
+#[derive(Debug, PartialEq, Eq)]
+struct Token {
+    start_index: usize,
+    left: isize,
+    right: isize,
+    token_type: TokenType,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum TokenType {
+    Mul,
+    Do,
+    Dont,
+}
 
 pub fn process(input: &str) -> std::result::Result<String, Error> {
     println!("[main start]");
-    let mut safe_report_count = 0;
+    let mul_regex = Regex::new(r"mul\((\d+),(\d+)\)").unwrap();
+    let do_regex = Regex::new(r"do\(\)").unwrap();
+    let dont_regex = Regex::new(r"don't\(\)").unwrap();
+    let mut instruction_sum: isize = 0;
 
-    let lines = input.lines();
-    // consumes the iterator, returns an (Optional) String
-    for line in lines {
-        dbg!(line);
-        let levels: Vec<isize> = line
-            .split_ascii_whitespace()
-            .map(|val| val.parse::<isize>().unwrap())
-            .collect();
+    let mut tokens: Vec<Token> = vec![];
 
-        let default_check = check_report(&levels);
-        if default_check == ReportOutcome::Safe {
-            safe_report_count += 1;
-            dbg!(default_check, safe_report_count);
-            continue;
-        }
-        let outcome = check_report_variants(levels);
-        safe_report_count += match outcome {
-            ReportOutcome::Safe => 1,
-            _ => 0,
-        }
+    for capture in mul_regex.captures_iter(input) {
+        tokens.push(Token {
+            start_index: capture.get(0).unwrap().start(),
+            left: capture[1].parse::<isize>().unwrap(),
+            right: capture[2].parse::<isize>().unwrap(),
+            token_type: TokenType::Mul,
+        })
     }
 
-    Ok(safe_report_count.to_string())
-}
+    for regmatch in do_regex.find_iter(input) {
+        tokens.push(Token {
+            start_index: regmatch.start(),
+            token_type: TokenType::Do,
+            left: 0,
+            right: 0,
+        })
+    }
 
-#[derive(Debug, PartialEq)]
-enum ReportOutcome {
-    Safe,
-    Unsafe,
-}
+    for regmatch in dont_regex.find_iter(input) {
+        tokens.push(Token {
+            start_index: regmatch.start(),
+            token_type: TokenType::Dont,
+            left: 0,
+            right: 0,
+        })
+    }
 
-fn check_report<'a, I>(levels: I) -> ReportOutcome
-where
-    I: IntoIterator<Item = &'a isize>,
-{
-    let mut levels = levels.into_iter();
-    let mut trend: Option<isize> = None;
-    let mut target_value = levels.next().unwrap();
-    for next_value in levels {
-        let delta = next_value - target_value;
-        if delta.abs() < 1 || delta.abs() > 3 {
-            println!(
-                "Unsafe delta: {}, next_value: {}, target_value: {}",
-                delta, next_value, target_value
-            );
-            return ReportOutcome::Unsafe;
-        }
-        target_value = next_value;
+    tokens.sort_by_key(|token| token.start_index);
 
-        match trend {
-            None => {
-                trend = Some(delta.signum());
-                continue;
-            }
-            Some(trend_value) => {
-                let next_trend = delta.signum();
-                if next_trend != trend_value {
-                    println!("Unsafe trend");
-                    return ReportOutcome::Unsafe;
+    let mut mul_enabled = true;
+    for token in tokens {
+        match token.token_type {
+            TokenType::Mul => {
+                if mul_enabled {
+                    instruction_sum += token.left * token.right
                 }
-                trend = Some(next_trend);
             }
+            TokenType::Do => mul_enabled = true,
+            TokenType::Dont => mul_enabled = false,
         }
     }
 
-    ReportOutcome::Safe
-}
-
-fn check_report_variants<I>(levels: I) -> ReportOutcome
-where
-    I: IntoIterator<Item = isize>,
-{
-    let levels: Vec<isize> = levels.into_iter().collect();
-    for index in 0..levels.len() {
-        let modified_report: Vec<&isize> = levels
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| i != &index)
-            .map(|(_, v)| v)
-            .collect();
-        dbg!(index, &modified_report);
-        let result = check_report(modified_report);
-        if result == ReportOutcome::Safe {
-            return result;
-        }
-    }
-
-    ReportOutcome::Unsafe
+    Ok(instruction_sum.to_string())
 }
 
 #[cfg(test)]
@@ -100,8 +76,10 @@ mod tests {
 
     #[test]
     fn test_process() -> Result<(), Error> {
-        let input = include_str!("input-example.txt");
-        assert_eq!("4", process(input)?);
+        // let input = include_str!("input-example.txt");
+        let input = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))";
+
+        assert_eq!("48", process(input)?);
         Ok(())
     }
 }
