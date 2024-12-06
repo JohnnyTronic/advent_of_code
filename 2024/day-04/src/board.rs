@@ -23,12 +23,22 @@ impl Board {
     //     self.data[x][y]
     // }
 
-    pub fn get(&self, position: &Point) -> Option<char> {
-        if !self.check_is_in_bounds(position.x, position.y) {
+    pub fn get(&self, position: impl AsRef<Point>) -> Option<char> {
+        let x = position.as_ref().x;
+        let y = position.as_ref().y;
+        if !self.check_is_in_bounds(x, y) {
             return None;
         }
 
-        Some(self.data[position.x as usize][position.y as usize])
+        let Ok(x) = TryInto::<usize>::try_into(x) else {
+            return None;
+        };
+
+        let Ok(y) = TryInto::<usize>::try_into(y) else {
+            return None;
+        };
+
+        Some(self.data[x][y])
     }
 
     pub fn set(&mut self, x: usize, y: usize, new_char: char) {

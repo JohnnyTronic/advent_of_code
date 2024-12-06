@@ -22,3 +22,9 @@ impl<'b> std::ops::Add<&'b Point> for &Point {
         }
     }
 }
+
+impl AsRef<Point> for Point {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
