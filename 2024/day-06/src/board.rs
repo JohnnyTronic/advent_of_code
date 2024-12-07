@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use crate::{boardcell::BoardCell, point2d::Point2D};
 
+#[derive(Clone)]
 pub struct Board {
     pub cells: Vec<Vec<BoardCell>>,
     pub guard_starting_position: Point2D,
@@ -34,6 +35,15 @@ impl Board {
             column.get_mut(x)
         } else {
             None
+        }
+    }
+
+    pub fn print_board(&self) {
+        for row in self.cells.iter() {
+            for cell in row.iter() {
+                print!("{}", cell.terrain);
+            }
+            println!();
         }
     }
 }
@@ -69,13 +79,6 @@ impl FromStr for Board {
                     _ => panic!("Unexpected terrain char: {}", char),
                 }
             }
-        }
-
-        for (y, row) in board.cells.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                print!("{}", cell.terrain);
-            }
-            print!("\n");
         }
 
         Ok(board)

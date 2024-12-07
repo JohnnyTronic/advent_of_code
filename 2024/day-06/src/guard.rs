@@ -34,7 +34,6 @@ impl Guard {
     }
 
     pub fn turn_right(&mut self) {
-        println!("@ {:?}, turning right", self.position);
         match self.facing {
             NORTH => self.facing = EAST,
             EAST => self.facing = SOUTH,
@@ -42,5 +41,39 @@ impl Guard {
             WEST => self.facing = NORTH,
             _ => panic!("Unexpected facing: {:?}", self.facing),
         }
+    }
+
+    pub fn walk_to_exhaustion(&mut self, board: &mut Board) -> bool {
+        let mut steps = 0;
+
+        if self.position.x < 0 {
+            return false;
+        }
+
+        if self.position.y < 0 {
+            return false;
+        }
+
+        while let Some(current_cell) = board.get(&self.position) {
+            current_cell.visited = true;
+            steps += 1;
+
+            if steps > 10000 {
+                return true;
+            }
+
+            let next_position = &self.position + &self.facing;
+            if let Some(next_cell) = board.get(&next_position) {
+                match next_cell.terrain {
+                    '.' => self.position = next_position.clone(),
+                    '#' => self.turn_right(),
+                    _ => panic!("Unexpected terrain: {}", next_cell.terrain),
+                }
+            } else {
+                return false;
+            }
+        }
+
+        false
     }
 }
