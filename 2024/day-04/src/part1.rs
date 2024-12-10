@@ -13,14 +13,12 @@ static ALL_DIRECTIONS: [Point; 8] = [
 ];
 
 pub fn process(input: &str) -> std::result::Result<String, Error> {
-    println!("[main start]");
     let mut xmas_count = 0;
 
     let board = Board::from_str(input).expect("Could not parse Board from input string");
 
     for (x, row) in board.iter().enumerate() {
         for (y, _) in row.iter().enumerate() {
-            println!("find_xmas at x {} y {}", x, y);
             xmas_count += find_xmas(&board, x, y);
         }
     }
