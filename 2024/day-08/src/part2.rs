@@ -1,99 +1,46 @@
-use std::io::Error;
+use std::{collections::HashSet, io::Error, str::FromStr};
+
+use glam::IVec2;
+use itertools::Itertools;
+
+use crate::board::Board;
 
 pub fn process(input: &str) -> std::result::Result<String, Error> {
-    let mut total_calibration_result = 0;
+    let mut antinode_positions = HashSet::new();
 
-    for line in input.lines() {
-        let mut line_split = line.split(':');
-        let test_value = line_split.next().unwrap().parse::<u64>().unwrap();
+    let board = Board::from_str(input).expect("Error parsing board");
+    let max_repeats: isize = (std::cmp::max(board.row_count, board.column_count) * 2) as isize;
 
-        let args_list = line_split.next().expect("Error extracting args list");
-        let args: Vec<u64> = args_list
-            .trim()
-            .split(" ")
-            .map(|arg| arg.parse::<u64>().expect("failed to parse arg into number"))
-            .collect();
+    for antenna_char in board.antenna_map.keys() {
+        let antenna_list = board.antenna_map.get(antenna_char).unwrap();
+        for combo in antenna_list.iter().combinations(2) {
+            let antenna_a = combo[0].as_ivec2();
+            let antenna_b = combo[1].as_ivec2();
+            let diff = antenna_b - antenna_a;
 
-        let operator_count = args.len() - 1;
-        let operators_sequence_permutations = generate_operator_sequences(operator_count as u64);
-
-        for operator_sequence in operators_sequence_permutations {
-            let mut arg_iter = args.iter().enumerate();
-            let (_arg_index, first_arg) = arg_iter.next().expect("Empty args?!");
-            let mut running_total: u64 = *first_arg;
-
-            for (operator_index, operator) in operator_sequence.iter().enumerate() {
-                let (_next_arg_index, next_arg) =
-                    arg_iter.next().expect("Arg vs Operator count mismatch");
-
-                match operator {
-                    Operator::Add => {
-                        running_total += next_arg;
-                    }
-                    Operator::Multiply => {
-                        running_total *= next_arg;
-                    }
-                    Operator::Concatenate => {
-                        running_total = (running_total.to_string() + &next_arg.to_string())
-                            .parse::<u64>()
-                            .expect("Could re-numberatize the concatenated arg strings");
-                    }
+            for i in 0..max_repeats {
+                let potential_antinode_position =
+                    antenna_a - diff.saturating_mul(IVec2::new(i as i32, i as i32));
+                if board.is_in_bounds(potential_antinode_position) {
+                    antinode_positions.insert(potential_antinode_position);
+                } else {
+                    break;
                 }
             }
-
-            if running_total == test_value {
-                total_calibration_result += test_value;
-                break;
+            for i in 0..max_repeats {
+                let potential_antinode_position =
+                    antenna_b + diff.saturating_mul(IVec2::new(i as i32, i as i32));
+                if board.is_in_bounds(potential_antinode_position) {
+                    antinode_positions.insert(potential_antinode_position);
+                } else {
+                    break;
+                }
             }
         }
     }
 
-    Ok(total_calibration_result.to_string())
-}
-
-#[derive(Debug, Clone)]
-enum Operator {
-    Add,
-    Multiply,
-    Concatenate,
-}
-
-fn generate_operator_sequences(operator_count: u64) -> Vec<Vec<Operator>> {
-    let mut operator_chain_permutations: Vec<Vec<Operator>> = vec![
-        vec![Operator::Add],
-        vec![Operator::Multiply],
-        vec![Operator::Concatenate],
-    ];
-
-    if operator_count > 1 {
-        operator_chain_permutations =
-            append_operators(operator_chain_permutations, operator_count - 1);
-    }
-    operator_chain_permutations
-}
-
-fn append_operators(
-    operator_chain_permutations: Vec<Vec<Operator>>,
-    depth: u64,
-) -> Vec<Vec<Operator>> {
-    let mut to_return: Vec<Vec<Operator>> = vec![];
-
-    for permutation in operator_chain_permutations {
-        let mut add_variant = permutation.clone();
-        add_variant.push(Operator::Add);
-        to_return.push(add_variant);
-        let mut mul_variant = permutation.clone();
-        mul_variant.push(Operator::Multiply);
-        to_return.push(mul_variant);
-        let mut concat_variant = permutation.clone();
-        concat_variant.push(Operator::Concatenate);
-        to_return.push(concat_variant);
-    }
-
-    if depth > 1 {
-        to_return = append_operators(to_return, depth - 1)
-    };
-    to_return
+    let total_antinodes = antinode_positions.len();
+    Ok(total_antinodes.to_string())
 }
 
 #[cfg(test)]
@@ -103,7 +50,7 @@ mod tests {
     #[test]
     fn test_process() -> Result<(), Error> {
         let input = include_str!("input-example.txt");
-        assert_eq!("11387", process(input)?);
+        assert_eq!("34", process(input)?);
         Ok(())
     }
 }
