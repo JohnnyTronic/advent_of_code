@@ -1,86 +1,149 @@
 use std::{collections::HashMap, io::Error};
 
+#[derive(Debug)]
 struct MetaStone {
     value: usize,
     depth: usize,
-    post_blink: (usize, Option<usize>),
-    final_count: usize,
+    final_count: Option<usize>,
+}
+
+impl MetaStone {
+    pub fn hash(&self) -> String {
+        hash_metastone_values(self.value, self.depth)
+    }
+}
+
+fn hash_metastone_values(value: usize, depth: usize) -> String {
+    format!("{}:{}", value, depth)
 }
 
 pub fn process(input: &str) -> std::result::Result<String, Error> {
     println!("Processing input: {}", input);
-    let mut stones: Vec<usize> = input
+    let original_stone_values: Vec<usize> = input
         .split(' ')
         .map(|i| i.trim().parse::<usize>().expect("Parse error"))
         .collect();
 
-    let blink_count = 25;
-
     let mut compute_map: HashMap<usize, (usize, Option<usize>)> = HashMap::new();
-    compute_map.insert(0, (1, None));
+    let mut resolved_metastones: HashMap<String, MetaStone> = HashMap::new();
+    let mut unresolved_metastones: Vec<MetaStone> = original_stone_values
+        .iter()
+        .map(|original_stone_value| MetaStone {
+            value: *original_stone_value,
+            depth: 0,
+            final_count: None,
+        })
+        .collect();
 
-    for _blink in 0..blink_count {
-        println!("BLINK: {}", _blink);
-        let mut new_stones: Vec<usize> = vec![];
-        for stone in stones {
-            if let Some(precomputed) = compute_map.get(&stone) {
-                new_stones.push(precomputed.0);
-                if let Some(second) = precomputed.1 {
-                    new_stones.push(second);
-                }
-                continue;
-            }
+    let target_depth = 75;
 
-            println!("Uncached: {}", stone);
+    while !unresolved_metastones.is_empty() {
+        unresolved_metastones.sort_by(|a, b| a.depth.cmp(&b.depth));
+        let mut metastone = unresolved_metastones.pop().unwrap();
+        println!("Investigating unresolve stone {:?}", &metastone);
 
-            let stone_string = &stone.to_string();
-            let char_count = stone_string.chars().count();
-            if char_count % 2 == 0 {
-                let (first, second) = stone_string.split_at(char_count / 2);
-                let first_num = first.parse::<usize>().unwrap();
-                let second_num = second.parse::<usize>().unwrap();
-                compute_map.insert(stone, (first_num, Some(second_num)));
-                new_stones.push(first_num);
-                new_stones.push(second_num);
-
-                continue;
-            }
-
-            let answer = stone * 2024;
-            compute_map.insert(stone, (answer, None));
-            new_stones.push(answer);
+        if metastone.depth == target_depth {
+            println!("HIT FINAL DEPTH: {:?}", metastone);
+            metastone.final_count = Some(1);
+            resolved_metastones.insert(metastone.hash(), metastone);
             continue;
         }
-        stones = new_stones;
+
+        let next_depth = metastone.depth + 1;
+        let (next_value_a, next_value_b) = compute_next_values(&mut compute_map, metastone.value);
+
+        let mut next_metastone_a: Option<&MetaStone> = None;
+        let mut next_metastone_b: Option<&MetaStone> = None;
+
+        if let Some(resolved_metastone_a) =
+            resolved_metastones.get(&hash_metastone_values(next_value_a, next_depth))
+        {
+            next_metastone_a = Some(resolved_metastone_a);
+            continue;
+        } else {
+            unresolved_metastones.push(MetaStone {
+                value: next_value_a,
+                depth: next_depth,
+                final_count: None,
+            });
+        };
+
+        if let Some(next_value_b) = next_value_b {
+            if let Some(resolved_metastone_b) =
+                resolved_metastones.get(&hash_metastone_values(next_value_b, next_depth))
+            {
+                next_metastone_b = Some(resolved_metastone_b);
+            } else {
+                unresolved_metastones.push(MetaStone {
+                    value: next_value_b,
+                    depth: next_depth,
+                    final_count: None,
+                });
+            };
+        }
+
+        if next_metastone_a.is_some_and(|i| i.final_count.is_some())
+            && next_metastone_b.is_some_and(|i| i.final_count.is_some())
+        {
+            let final_count_a = next_metastone_a.unwrap().final_count.unwrap();
+            let mut final_count_b = 0;
+
+            if next_metastone_b.is_some_and(|i| i.final_count.is_some()) {
+                final_count_b = next_metastone_b.unwrap().final_count.unwrap();
+            }
+
+            metastone.final_count = Some(final_count_a + final_count_b);
+            resolved_metastones.insert(metastone.hash(), metastone);
+        } else {
+            unresolved_metastones.push(metastone);
+        }
     }
 
-    println!("Beginning recursion...");
-    let mut child_total = 0;
-    for stone in &stones {
-        child_total += calculate_total_leaves(stone, 75, &compute_map);
+    // dbg!(&unresolved_metastones, &resolved_metastones);
+    println!("Resolved count: {}", resolved_metastones.len());
+
+    let mut total_stones = 0;
+    for original_stone_value in original_stone_values {
+        if let Some(resolved_metastone) =
+            resolved_metastones.get(&hash_metastone_values(original_stone_value, 0))
+        {
+            total_stones += resolved_metastone.final_count.unwrap();
+        } else {
+            panic!("Could not find Resolved MetaStone!")
+        };
     }
 
-    Ok(child_total.to_string())
+    Ok(total_stones.to_string())
 }
 
-fn calculate_total_leaves(
-    stone: &usize,
-    depth: usize,
-    compute_map: &HashMap<usize, (usize, Option<usize>)>,
-) -> usize {
-    let next_gen = compute_map
-        .get(stone)
-        .unwrap_or_else(|| panic!("Compute map missing value: {}", stone));
-    if depth == 1 {
-        return if next_gen.1.is_some() { 2 } else { 1 };
+fn compute_next_values(
+    compute_map: &mut HashMap<usize, (usize, Option<usize>)>,
+    value: usize,
+) -> (usize, Option<usize>) {
+    if let Some(precomputed) = compute_map.get(&value) {
+        return *precomputed;
+    }
+    println!("Cache miss: {}", &value);
+    if value == 0 {
+        let answer = (1, None);
+        compute_map.insert(value, answer);
+        return answer;
     }
 
-    let mut child_total = 0;
-    child_total += calculate_total_leaves(&next_gen.0, depth - 1, compute_map);
-    if let Some(next_gen_b) = next_gen.1 {
-        child_total += calculate_total_leaves(&next_gen_b, depth + 1, compute_map);
+    let value_as_string = value.to_string();
+    let char_count = value_as_string.chars().count();
+    if char_count % 2 == 0 {
+        let (first, second) = value_as_string.split_at(char_count / 2);
+        let first_num = first.parse::<usize>().unwrap();
+        let second_num = second.parse::<usize>().unwrap();
+        let answer = (first_num, Some(second_num));
+        compute_map.insert(value, answer);
+        return answer;
     }
-    child_total
+
+    let answer = (value * 2024, None);
+    compute_map.insert(value, answer);
+    answer
 }
 
 #[cfg(test)]
@@ -90,7 +153,7 @@ mod tests {
     #[test]
     fn test_process() -> Result<(), Error> {
         // let input = include_str!("input-example.txt");
-        let input = "30";
+        let input = "400 30 121";
         assert_eq!("55312", process(input)?);
         Ok(())
     }
