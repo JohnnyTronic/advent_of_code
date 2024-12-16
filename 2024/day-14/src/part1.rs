@@ -3,11 +3,7 @@ use std::io::Error;
 use glam::IVec2;
 use regex::Regex;
 
-#[derive(Debug, PartialEq, Eq)]
-struct Robot {
-    position: IVec2,
-    velocity: IVec2,
-}
+use crate::{print_map, robot::Robot};
 
 pub fn process(
     input: &str,
@@ -67,24 +63,6 @@ pub fn process(
     let safety_factor: i32 = quandrant_counts.iter().product();
 
     Ok(safety_factor.to_string())
-}
-
-fn print_map(robots: &[Robot], width: i32, height: i32) {
-    for y in 0..height {
-        for x in 0..width {
-            let robot_count: usize = robots
-                .iter()
-                .filter(|r| r.position == IVec2::new(x, y))
-                .count();
-
-            match robot_count {
-                0 => print!("."),
-                _ => print!("{}", robot_count),
-            }
-        }
-        println!();
-    }
-    println!();
 }
 
 #[cfg(test)]
