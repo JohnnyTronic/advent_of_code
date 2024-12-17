@@ -1,13 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::collections::{HashMap, HashSet};
 
 use glam::IVec2;
 
-use crate::ShoveResult;
+use crate::{world_state::WorldState, ShoveResult};
 
-pub struct WorldState {
+pub struct BigWorldState {
     pub width: usize,
     pub height: usize,
     pub terrain: HashMap<IVec2, char>,
@@ -15,7 +12,49 @@ pub struct WorldState {
     pub robot_position: IVec2,
 }
 
-impl WorldState {
+pub enum CollisionResult {
+    Wall(IVec2),
+}
+
+impl BigWorldState {
+    pub fn from_world_state(world_state: &WorldState) -> BigWorldState {
+        let mut big_world_state = BigWorldState {
+            width: world_state.width * 2,
+            height: world_state.height,
+            terrain: HashMap::new(),
+            box_positions: HashSet::new(),
+            robot_position: IVec2::new(0, 0),
+        };
+
+        for (position, char) in &world_state.terrain {
+            let big_position = IVec2::new(position.x * 2, position.y);
+            let big_position_plus = big_position + IVec2::new(1, 0);
+            match char {
+                '.' => {
+                    big_world_state.terrain.insert(big_position, '.');
+                    big_world_state.terrain.insert(big_position_plus, '.');
+                }
+                '#' => {
+                    big_world_state.terrain.insert(big_position, '#');
+                    big_world_state.terrain.insert(big_position_plus, '#');
+                }
+                _ => panic!("Unexpected terrain [{}]", char),
+            }
+        }
+
+        for box_position in &world_state.box_positions {
+            let big_box_position = IVec2::new(box_position.x * 2, box_position.y);
+            big_world_state.box_positions.insert(big_box_position);
+        }
+
+        big_world_state.robot_position =
+            world_state.robot_position.saturating_mul(IVec2::new(2, 2));
+
+        big_world_state
+    }
+
+    fn check_collision_narrow(position: &IVec2) -> CollisionResult {}
+
     pub fn simulate(&mut self, robot_movement: &IVec2) {
         let robot_next_position = self.robot_position + robot_movement;
         let box_in_way = self.box_positions.contains(&robot_next_position);
@@ -94,15 +133,20 @@ impl WorldState {
     pub fn print_map(&self) {
         for y in 0..self.height {
             for x in 0..self.width {
-                let pos = IVec2::new(x as i32, y as i32);
-                if self.robot_position == pos {
+                let print_position = IVec2::new(x as i32, y as i32);
+                if print_position == self.robot_position {
                     print!("@");
                 } else if self
                     .box_positions
                     .iter()
-                    .any(|box_position| box_position == &pos)
+                    .any(|box_position| box_position == &print_position)
                 {
-                    print!("O");
+                    print!("[");
+                } else if self.box_positions.iter().any(|box_position| {
+                    let box_position_plus = IVec2::new(box_position.x + 1, box_position.y);
+                    print_position == box_position_plus
+                }) {
+                    print!("]");
                 } else {
                     print!(
                         "{}",
@@ -112,53 +156,5 @@ impl WorldState {
             }
             println!();
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct ParseWorldStateError {}
-
-impl FromStr for WorldState {
-    type Err = ParseWorldStateError;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let mut first_split = input.split("\n\n");
-        let map_input = first_split.next().unwrap();
-
-        let mut world_state = WorldState {
-            width: map_input.lines().next().unwrap().chars().count(),
-            height: map_input.lines().count(),
-            terrain: HashMap::new(),
-            box_positions: HashSet::new(),
-            robot_position: IVec2::new(0, 0),
-        };
-
-        for (y, row) in map_input.lines().enumerate() {
-            for (x, char) in row.chars().enumerate() {
-                let x = x as i32;
-                let y = y as i32;
-                match char {
-                    '#' => {
-                        world_state.terrain.insert(IVec2::new(x, y), '#');
-                    }
-                    '.' => {
-                        world_state.terrain.insert(IVec2::new(x, y), '.');
-                    }
-                    'O' => {
-                        world_state.box_positions.insert(IVec2::new(x, y));
-                        world_state.terrain.insert(IVec2::new(x, y), '.');
-                    }
-                    '@' => {
-                        world_state.robot_position = IVec2::new(x, y);
-                        world_state.terrain.insert(IVec2::new(x, y), '.');
-                    }
-                    _ => {
-                        panic!("Unexpected terrain type: [{}]", char);
-                    }
-                }
-            }
-        }
-
-        Ok(world_state)
     }
 }
